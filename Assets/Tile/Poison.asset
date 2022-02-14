@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d5781435c1e1f4489290e39f4ce46ce, type: 3}
+  m_Name: Poison
+  m_EditorClassIdentifier: 
+  TileName: Poison
+  TileObject: {fileID: 11400000, guid: 9b83e40e7c99a874c8a9ec565e1064fb, type: 2}
+  Type: 3
+  GameOverTile: 1
+  DestinationTile: 0
+  RedirectDirection: 0
