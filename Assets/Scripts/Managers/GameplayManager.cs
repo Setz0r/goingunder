@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using System.Linq;
 
 [Serializable]
 public enum GameState : int
@@ -15,6 +16,20 @@ public enum GameState : int
     WonGame
 }
 
+[Serializable]
+public class RootRedirectTile
+{
+    public TileRedirectDirection redirectDirection;
+    public Tile rootPieceTile;
+}
+
+[Serializable]
+public class RootDirRedir
+{
+    public GrowthDirection direction;
+    public TileRedirectDirection redirectDirection;
+}
+
 public class GameplayManager : MonoBehaviour
 {
     public static GameplayManager instance;
@@ -22,6 +37,7 @@ public class GameplayManager : MonoBehaviour
     public Grid gameGrid;
     public Tilemap backgroundLayer;
     public Tilemap stageLayer;
+    public Tilemap rootLayer;
     public Tilemap overlayLayer;
     public Tilemap debugLayer;
     
@@ -31,18 +47,32 @@ public class GameplayManager : MonoBehaviour
     public GameObject gameWonText;
 
     public Tile backgroundTile;
+    public Tile[] alternateBGTiles;
     public Tile dirtTile;
+    public Tile[] alternateDirtTiles;
+    public TileBase poisonTile;
+    public TileBase waterTile;    
 
     public GameObject rootPrefab;
     public List<GameObject> activeRoots = new List<GameObject>();
-
+    public Tile[] alternateHorRoots;
+    public Tile[] alternateVertRoots;
+    
     public GameTileConfig[] TileList;
 
     public Dictionary<TileType, GameTileConfig> GameTileConfigLookup;
     public Dictionary<TileType, GameTile> GameTileLookup;
     public Dictionary<TileType, Tile> TileTypeLookup; 
 
+    public List<RootRedirectTile> rootRedirectTiles;
+    public Dictionary<TileRedirectDirection, Tile> rootRedirectTileLookup;
+    
+    public List<RootDirRedir> rootDirRedirs;
+    public Dictionary<GrowthDirection, TileRedirectDirection> rootReDirLookup;
+
     public GameMap activeMap;
+
+    public int MaxHistory = 5;
 
     public int MapMaxWidth = 32;
     public int MapMaxHeight = 18;
@@ -52,6 +82,18 @@ public class GameplayManager : MonoBehaviour
     public int totalRoots;
     public int totalRootsAtDestination;
 
+    public void PushHistory()
+    {
+
+        activeMap.previousMapTiles.Push(activeMap.mapTiles.Clone() as GameTile[,]);
+    }
+
+    public void PopHistory()
+    {
+        if (activeMap.previousMapTiles.Items.Count > 0)
+            activeMap.mapTiles = activeMap.previousMapTiles.Pop().Clone() as GameTile[,];
+    }
+
     public void InitializeMap()
     {
         activeMap = new GameMap(MapMaxWidth, MapMaxHeight);
@@ -59,13 +101,27 @@ public class GameplayManager : MonoBehaviour
         {
             for (int y = 0; y < MapMaxHeight; y++)
             {
-                backgroundLayer.SetTile(new Vector3Int(x, y, 0), backgroundTile);
+                int totalBGAlts = alternateBGTiles.Length;
+                int randomTile = UnityEngine.Random.Range(0, totalBGAlts);
+                backgroundLayer.SetTile(new Vector3Int(x, y, 0), alternateBGTiles[randomTile]);
             }
         }
     }
 
     public void ClearRoots()
     {
+        for (int x = 0; x < activeMap.sizeX; x++)
+        {
+            for (int y = 0; y < activeMap.sizeY; y++)
+            {
+                rootLayer.SetTile(new Vector3Int(x, y, 0), null);
+                if (activeMap.mapTiles[x, y].config.Animated)
+                {
+                    Vector3Int gridLocation = new Vector3Int(x, y, 0);
+                    stageLayer.SetTile(gridLocation, activeMap.mapTiles[x, y].config.TileObject);
+                }
+            }
+        }
         if (activeRoots != null && activeRoots.Count > 0)
         {
             foreach (var root in activeRoots)
@@ -86,11 +142,15 @@ public class GameplayManager : MonoBehaviour
         {
             for (int y = 0; y < activeMap.sizeY; y++)
             {
+                Vector3Int gridLocation = new Vector3Int(x, y, 0);
                 if (activeMap.mapTiles[x, y].IsRootTile)
                 {
-                    Vector3Int gridLocation = new Vector3Int(x, y, 0);
                     AddRoot(activeMap.mapTiles[x, y].tileType, gridLocation);
                     stageLayer.SetTile(gridLocation, null);
+                }
+                if (activeMap.mapTiles[x, y].config.Animated)
+                {
+                    stageLayer.SetTile(gridLocation, activeMap.mapTiles[x, y].config.AnimatedTileObject);
                 }
             }
         }
@@ -103,51 +163,42 @@ public class GameplayManager : MonoBehaviour
         Vector3 destination = position;
         Quaternion rotation = Quaternion.identity;
         GrowthDirection growDirection = GrowthDirection.South;
-        switch(type)
+        switch (type)
         {
-            case TileType.RootLeft:
-                {
-                    destination.x += 0.5f;                    
-                    destination.y += 0.4f;
-                    rotation = Quaternion.Euler(0, 0, 90f);
-                    growDirection = GrowthDirection.East;
-                }
-                break;
-            case TileType.RootRight:
-                {
-                    destination.x += 0.5f;
-                    destination.y += 0.6f;
-                    rotation = Quaternion.Euler(0, 0, 270f);
-                    growDirection = GrowthDirection.West;
-                }
-                break;
             case TileType.RootUp:
-                {
-                    destination.x += 0.4f;
-                    destination.y += 0.5f;
-                    
-                    growDirection = GrowthDirection.South;
-                }
+                growDirection = GrowthDirection.North;
                 break;
             case TileType.RootDown:
-                {
-                    destination.x += 0.6f;
-                    destination.y += 0.5f;
-                    rotation = Quaternion.Euler(0, 0, 180f);
-                    growDirection = GrowthDirection.North;
-                }
+                growDirection= GrowthDirection.South;
+                break;
+            case TileType.RootLeft:
+                growDirection = GrowthDirection.West;
+                break;
+            case TileType.RootRight:
+                growDirection= GrowthDirection.East;
                 break;
         }
+
+        rootPrefab.SetActive(false);
         GameObject newRoot = GameObject.Instantiate(rootPrefab, destination, Quaternion.identity);
         newRoot.GetComponent<Root>().root.transform.rotation = rotation;
-        newRoot.GetComponent<Root>().lastStageTipPosition = new Vector2Int(position.x, position.y);
-        newRoot.GetComponent<Root>().stageTipPosition = newRoot.GetComponent<Root>().lastStageTipPosition;
         newRoot.GetComponent<Root>().baseDirection = growDirection;
         newRoot.GetComponent<Root>().tileType = type;
         newRoot.GetComponent<Root>().stageStartPosition = position;
-        newRoot.GetComponent<Root>().UpdateDirection();
         activeRoots.Add(newRoot);
+        newRoot.SetActive(true);
     }
+
+    public bool RootsGrowing()
+    {
+        foreach(GameObject root in activeRoots)
+        {
+            if (root.GetComponent<Root>().Growing)
+                return true;
+        }
+        return false;
+    }
+
 
     public void LoadLevel(int levelNum)
     {
@@ -156,11 +207,11 @@ public class GameplayManager : MonoBehaviour
 
     public void ResetMap()
     {
-        ClearRoots();
-        PlaceRoots();
+        totalRootsAtDestination = 0;
         activeMap.ClearBlocks();
         activeMap.SetupBlocks();
-        totalRootsAtDestination = 0;
+        ClearRoots();
+        PlaceRoots();
     }
 
     public void SetGameOver()
@@ -214,7 +265,19 @@ public class GameplayManager : MonoBehaviour
         {
             TileTypeLookup[tilecfg.Type] = tilecfg.TileObject;
             GameTileLookup[tilecfg.Type] = new GameTile(tilecfg.Type) { config = tilecfg };
-        }       
+        }
+
+        rootRedirectTileLookup = new Dictionary<TileRedirectDirection, Tile>();
+        foreach (RootRedirectTile tile in rootRedirectTiles)
+        {
+            rootRedirectTileLookup[tile.redirectDirection] = tile.rootPieceTile;
+        }
+
+        rootReDirLookup = new Dictionary<GrowthDirection, TileRedirectDirection>();
+        foreach (RootDirRedir dr in rootDirRedirs)
+        {
+            rootReDirLookup[dr.direction] = dr.redirectDirection;
+        }
 
         InitializeMap();
         LoadLevel(1);

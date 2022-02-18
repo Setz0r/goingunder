@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TileName: Water
   TileObject: {fileID: 11400000, guid: 16b93ea1901786e40a7c03fa46ee8a3c, type: 2}
+  AnimatedTileObject: {fileID: 11400000, guid: f37702e0f617fb44dadac5cb78bd03c7, type: 2}
   Type: 2
+  Animated: 1
   GameOverTile: 0
   DestinationTile: 1
   RedirectDirection: 0

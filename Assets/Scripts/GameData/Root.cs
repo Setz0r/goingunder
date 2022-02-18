@@ -2,10 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 using UnityEngine.U2D;
 
 [Serializable]
-public enum RootState: int
+public enum RootState : int
 {
     Idle,
     Moving,
@@ -19,26 +20,22 @@ public enum GrowthDirection : int
     None, North, East, South, West
 }
 
-public class RootTipData
-{
-    public Vector3 position;
-    public Vector3 leftTangent;
-    public Vector3 rightTangent;
-}
 
 public class Root : MonoBehaviour
 {
     public GameObject root;
-    public SpriteShapeController shapeController;
 
-    public float growSpeed = 0.1f;
-    public float growDuration = 1f;
+    public float growSpeed = 0.02f;
+    public float redirectDelay = 0.05f;
+    public float currentDelay = 0;
 
     public float startGrowTime;
 
+    public Vector3Int stageStartPosition;
+    public Vector3Int stageTipPosition;
+
     public GrowthDirection baseDirection;
     public GrowthDirection growthDirection;
-    private GrowthDirection lastDirection;
     private GrowthDirection currentDirection;
 
     public TileType tileType;
@@ -46,317 +43,234 @@ public class Root : MonoBehaviour
     public bool Growing { get { return growing; } }
 
     private bool growing;
-    private bool newGrowth;
+    private bool blocked;
+    private bool redirecting;
     private bool reachedDestination;
 
-    private RootTipData lastTipPosition;
-    private RootTipData newTipPosition;
-
-    public Vector2Int lastStageTipPosition;
-    public Vector2Int stageTipPosition;
-    public Vector3Int stageStartPosition;
-
-    private int PointCount { get { return shapeController.spline.GetPointCount(); } }
-    private Vector3 CurrentTipPosition { get { return shapeController.spline.GetPosition(PointCount - 1); } }
-    private Vector3 CurrentLeftTangent { get { return shapeController.spline.GetLeftTangent(PointCount - 1); } }
-    private Vector3 CurrentRightTangent { get { return shapeController.spline.GetRightTangent(PointCount - 1); } }
-
-    private Vector3 GetLastPosition()
+    public Tuple<int, int> GetDestination(GrowthDirection direction)
     {
-        return shapeController.spline.GetPosition(PointCount - 1);
-    }
-
-    private void AddNewPreviousPosition()
-    {
-        shapeController.spline.InsertPointAt(PointCount - 1, lastTipPosition.position);
-        shapeController.spline.SetTangentMode(PointCount - 2, ShapeTangentMode.Continuous);
-        shapeController.spline.SetLeftTangent(PointCount - 2, lastTipPosition.leftTangent);
-        shapeController.spline.SetRightTangent(PointCount - 2, lastTipPosition.rightTangent);
-    }
-
-    private void UpdatePreviousTangents(Vector3 leftTangent, Vector3 rightTangent)
-    {
-        shapeController.spline.SetLeftTangent(PointCount - 2, leftTangent);
-        shapeController.spline.SetRightTangent(PointCount - 2, rightTangent);
-    }
-
-    private void MoveTipToPosition(RootTipData newPosition)
-    {
-        shapeController.spline.SetPosition(PointCount - 1, newPosition.position);
-        shapeController.spline.SetLeftTangent(PointCount - 1, newPosition.leftTangent);
-        shapeController.spline.SetRightTangent(PointCount - 1, newPosition.rightTangent);
-    }
-
-    RootTipData GetDataFromDirection(Vector3 oldPosition, GrowthDirection direction)
-    {
-        Vector3 newPosition = oldPosition;
-        Vector3 lt = Vector3.zero;
-        Vector3 rt = Vector3.zero;
-
+        int testX = stageTipPosition.x;
+        int testY = stageTipPosition.y;
         switch (direction)
         {
             case GrowthDirection.North:
-                {
-                    newPosition.y += 2f;
-                    lt = new Vector3(0, -0.5f, 0);
-                    rt = new Vector3(0, 0.5f, 0);
-                }
-                break;
-            case GrowthDirection.South:
-                {
-                    newPosition.y -= 2f;
-                    lt = new Vector3(0, 0.5f, 0);
-                    rt = new Vector3(0, -0.5f, 0);
-                }
-                break;
-            case GrowthDirection.West:
-                {
-                    newPosition.x -= 2f;
-                    lt = new Vector3(0.5f, 0, 0);
-                    rt = new Vector3(-0.5f, 0, 0);
-                }
+                testY += 1;
                 break;
             case GrowthDirection.East:
-                {
-                    newPosition.x += 2f;
-                    lt = new Vector3(-0.5f, 0, 0);
-                    rt = new Vector3(0.5f, 0, 0);
-                }
+                testX += 1;
+                break;
+            case GrowthDirection.West:
+                testX -= 1;
+                break;
+            case GrowthDirection.South:
+                testY -= 1;
                 break;
         }
-        return new RootTipData()
-        {
-            position = newPosition,
-            leftTangent = lt,
-            rightTangent = rt
-        };
+        return new Tuple<int, int>(testX, testY);
     }
 
-    public Vector2Int GetDirectionPosition(GrowthDirection direction)
+    public bool DirectionBlocked(GrowthDirection direction)
     {
-        Vector2Int testPosition = new Vector2Int(stageTipPosition.x, stageTipPosition.y);
+        Tuple<int, int> destinationPos = GetDestination(direction);
+        return GameplayManager.instance.activeMap.mapTiles[destinationPos.Item1, destinationPos.Item2].IsBlockedTile;
+    }
+
+    public bool IsDestinationTile(Vector3Int position)
+    {
+        return GameplayManager.instance.activeMap.mapTiles[position.x, position.y].IsDestination;
+    }
+
+    public bool IsDeathTile(Vector3Int position)
+    {
+        return GameplayManager.instance.activeMap.mapTiles[position.x, position.y].IsDeathTile;
+    }
+
+    public bool IsRedirectTile(Vector3Int position)
+    {
+        return GameplayManager.instance.activeMap.mapTiles[position.x, position.y].IsRedirectTile;
+    }
+
+    public bool IsRedirectDirection(GrowthDirection direction)
+    {
+        Tuple<int, int> destinationPos = GetDestination(direction);
+        return IsRedirectTile(new Vector3Int(destinationPos.Item1, destinationPos.Item2, 0));
+    }
+
+
+    public GrowthDirection GetRedirectDirection(GrowthDirection enterDirection, TileType redirType)        
+    {
+        switch (redirType)
+        {
+            case TileType.ReflectorBL:
+                if (enterDirection == GrowthDirection.North)
+                    return GrowthDirection.East;
+                else if (enterDirection == GrowthDirection.East)
+                    return GrowthDirection.North;
+                break;
+            case TileType.ReflectorBR:
+                if (enterDirection == GrowthDirection.North)
+                    return GrowthDirection.West;
+                else if (enterDirection == GrowthDirection.West)
+                    return GrowthDirection.North;
+                break;
+            case TileType.ReflectorTL:
+                if (enterDirection == GrowthDirection.East)
+                    return GrowthDirection.South;
+                else if (enterDirection == GrowthDirection.South)
+                    return GrowthDirection.East;
+                break;
+            case TileType.ReflectorTR:
+                if (enterDirection == GrowthDirection.West)
+                    return GrowthDirection.South;
+                else if (enterDirection == GrowthDirection.South)
+                    return GrowthDirection.West;
+                break;
+        }
+
+        return GrowthDirection.None;
+    }
+
+    public GrowthDirection GetOppositeDirection(GrowthDirection direction)
+    {
         switch (direction)
         {
             case GrowthDirection.North:
-                testPosition.y += 1;
-                break;
+                return GrowthDirection.South;
             case GrowthDirection.South:
-                testPosition.y -= 1;
-                break;
-            case GrowthDirection.West:
-                testPosition.x -= 1;
-                break;
+                return GrowthDirection.North;
             case GrowthDirection.East:
-                testPosition.x += 1;
-                break;
+                return GrowthDirection.West;
+            case GrowthDirection.West:
+                return GrowthDirection.East;
         }
-
-        return testPosition;
+        return GrowthDirection.None;
     }
 
-    public bool CheckIfBlocked(GrowthDirection direction)
+    public Tile GetTileByDirection(GrowthDirection direction)
     {
-        Vector2Int testPosition = GetDirectionPosition(direction);
-        Debug.Log("Current Position: " + stageTipPosition.ToString());
-        Debug.Log("Test Position: " + testPosition.ToString());
-        if (testPosition.x < 0 || testPosition.x >= GameplayManager.instance.MapMaxWidth ||
-            testPosition.y < 0 || testPosition.y >= GameplayManager.instance.MapMaxHeight)
-            return true;
-        if (GameplayManager.instance.activeMap.mapTiles[testPosition.x, testPosition.y].IsBlockedTile)
+        switch (direction)
         {
-            Debug.Log("Block check returned true : " + testPosition.ToString());            
+            case GrowthDirection.North:
+                return GameplayManager.instance.TileTypeLookup[TileType.RootUp];
+            case GrowthDirection.South:
+                return GameplayManager.instance.TileTypeLookup[TileType.RootDown];
+            case GrowthDirection.East:
+                return GameplayManager.instance.TileTypeLookup[TileType.RootRight];
+            case GrowthDirection.West:
+                return GameplayManager.instance.TileTypeLookup[TileType.RootLeft];
         }
-        return GameplayManager.instance.activeMap.mapTiles[testPosition.x, testPosition.y].IsBlockedTile;
+        return null;
     }
 
-    public TileRedirectDirection CheckIfRedirected(Vector2Int position)
+    public TileType GetRedirectionType(Vector3Int position)
     {
-        TileRedirectDirection redir = GameplayManager.instance.activeMap.mapTiles[position.x, position.y].config.RedirectDirection;
-        return redir;
+        return GameplayManager.instance.activeMap.mapTiles[position.x, position.y].tileType;
     }
 
-    public GrowthDirection GetRedirectDirection(Vector2Int position, GrowthDirection direction)
+    public IEnumerator Grow()
     {
-        TileRedirectDirection redir = CheckIfRedirected(position);
-        if (redir != TileRedirectDirection.None)
+        if (!DirectionBlocked(currentDirection))
         {
-            switch (redir)
+            blocked = true;
+            yield return new WaitForSeconds(currentDelay);
+            growing = true;
+            Tuple<int, int> destination = GetDestination(currentDirection);
+            int curX = stageTipPosition.x;
+            int curY = stageTipPosition.y;
+            int destX = destination.Item1;
+            int destY = destination.Item2;
+            GameplayManager.instance.activeMap.mapTiles[curX, curY].Exit(currentDirection);
+            GameplayManager.instance.activeMap.mapTiles[destX, destY].Enter(GetOppositeDirection(currentDirection));
+            GameTile prevTile = GameplayManager.instance.activeMap.mapTiles[curX, curY];
+            GrowthDirection enterDir = prevTile.rootEnterDirection;
+            GrowthDirection exitDir = prevTile.rootExitDirection;
+            Tile setTile = null;
+
+            if ((enterDir == GrowthDirection.West && exitDir == GrowthDirection.South) ||
+                (enterDir == GrowthDirection.South && exitDir == GrowthDirection.West))
             {
-                case TileRedirectDirection.RightUp:
-                    {
-                        if (direction == GrowthDirection.West)
-                            return GrowthDirection.North;
-                        if (direction == GrowthDirection.South)
-                            return GrowthDirection.East;
-                    }
-                    break;
-                case TileRedirectDirection.LeftUp:
-                    {
-                        if (direction == GrowthDirection.East)
-                            return GrowthDirection.North;
-                        if (direction == GrowthDirection.South)
-                            return GrowthDirection.West;
-                    }
-                    break;
-                case TileRedirectDirection.RightDown:
-                    {
-                        if (direction == GrowthDirection.West)
-                            return GrowthDirection.South;
-                        if (direction == GrowthDirection.North)
-                            return GrowthDirection.East;
-                    }
-                    break;
-                case TileRedirectDirection.LeftDown:
-                    {
-                        if (direction == GrowthDirection.East)
-                            return GrowthDirection.South;
-                        if (direction == GrowthDirection.North)
-                            return GrowthDirection.West;
-                    }
-                    break;
+                setTile = GameplayManager.instance.rootRedirectTileLookup[TileRedirectDirection.LeftDown];
             }
-        }
-        return direction;
-    }
+            else if ((enterDir == GrowthDirection.North && exitDir == GrowthDirection.South) ||
+                (enterDir == GrowthDirection.South && exitDir == GrowthDirection.North))
+            {
+                int totalAlts = GameplayManager.instance.alternateVertRoots.Length;
+                if (totalAlts > 0)
+                {
+                    int randTile = UnityEngine.Random.Range(0, totalAlts);
+                    setTile = GameplayManager.instance.alternateVertRoots[randTile];
+                }
+                else
+                {
+                    setTile = GameplayManager.instance.rootRedirectTileLookup[TileRedirectDirection.UpDown];
+                }
+            }
+            else if ((enterDir == GrowthDirection.West && exitDir == GrowthDirection.East) ||
+                (enterDir == GrowthDirection.East && exitDir == GrowthDirection.West))
+            {
+                int totalAlts = GameplayManager.instance.alternateHorRoots.Length;
+                if (totalAlts > 0)
+                {
+                    int randTile = UnityEngine.Random.Range(0, totalAlts);
+                    setTile = GameplayManager.instance.alternateHorRoots[randTile];
+                }
+                else
+                {
+                    setTile = GameplayManager.instance.rootRedirectTileLookup[TileRedirectDirection.LeftRight];
+                }
+            }
+            else if ((enterDir == GrowthDirection.West && exitDir == GrowthDirection.North) ||
+                (enterDir == GrowthDirection.North && exitDir == GrowthDirection.West))
+            {
+                setTile = GameplayManager.instance.rootRedirectTileLookup[TileRedirectDirection.LeftUp];
+            }
+            else if ((enterDir == GrowthDirection.East && exitDir == GrowthDirection.South) ||
+                (enterDir == GrowthDirection.South && exitDir == GrowthDirection.East))
+            {
+                setTile = GameplayManager.instance.rootRedirectTileLookup[TileRedirectDirection.RightDown];
+            }
+            else if ((enterDir == GrowthDirection.East && exitDir == GrowthDirection.North) ||
+                (enterDir == GrowthDirection.North && exitDir == GrowthDirection.East))
+            {
+                setTile = GameplayManager.instance.rootRedirectTileLookup[TileRedirectDirection.RightUp];
+            }
+            GameplayManager.instance.rootLayer.SetTile(stageTipPosition, setTile);
 
-    private void Grow(GrowthDirection direction)
-    {
-        if (CheckIfBlocked(direction))
+            stageTipPosition = new Vector3Int(destX, destY, 0);
+
+            GameplayManager.instance.rootLayer.SetTile(stageTipPosition, GetTileByDirection(currentDirection));
+
+            if (IsDestinationTile(stageTipPosition))
+                GameplayManager.instance.totalRootsAtDestination++;
+
+            if (GameplayManager.instance.CheckIfWon())
+                GameplayManager.instance.SetGameWon();
+
+            if (IsDeathTile(stageTipPosition))
+                GameplayManager.instance.SetGameOver();
+
+            blocked = false;
+        }
+        else
         {
             growing = false;
-            return;
         }
-
-        lastStageTipPosition = new Vector2Int(stageTipPosition.x, stageTipPosition.y);
-
-        stageTipPosition = GetDirectionPosition(direction);
-
-        Vector3 lastPosition = GetLastPosition();
-
-        lastTipPosition.position = CurrentTipPosition;
-        lastTipPosition.leftTangent = CurrentLeftTangent;
-        lastTipPosition.rightTangent = CurrentRightTangent;
-
-        growing = true;
-
-        startGrowTime = Time.time;
-
-        if (direction != lastDirection)
-        {
-            lastDirection = direction;
-            newGrowth = true;
-        }
-
-        RootTipData newGrowthData = new RootTipData();
-        switch (direction)
-        {
-            case GrowthDirection.North:
-                {
-                    switch (baseDirection)
-                    {
-                        case GrowthDirection.East:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.East);
-                            break;
-                        case GrowthDirection.West:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.West);
-                            break;
-                        case GrowthDirection.North:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.South);
-                            break;
-                        default:
-                            newGrowthData = GetDataFromDirection(lastPosition, direction);
-                            break;
-                    }
-                }
-                break;
-            case GrowthDirection.East:
-                {
-                    switch (baseDirection)
-                    {
-                        case GrowthDirection.East:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.South);
-                            break;
-                        case GrowthDirection.West:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.North);
-                            break;
-                        case GrowthDirection.North:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.West);
-                            break;
-                        default:
-                            newGrowthData = GetDataFromDirection(lastPosition, direction);
-                            break;
-                    }
-                }
-                break;
-            case GrowthDirection.South:
-                {
-                    switch (baseDirection)
-                    {
-                        case GrowthDirection.East:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.West);
-                            break;
-                        case GrowthDirection.West:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.East);
-                            break;
-                        case GrowthDirection.North:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.North);
-                            break;
-                        default:
-                            newGrowthData = GetDataFromDirection(lastPosition, direction);
-                            break;
-                    }
-                }
-                break;
-            case GrowthDirection.West:
-                {
-                    switch (baseDirection)
-                    {
-                        case GrowthDirection.East:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.North);
-                            break;
-                        case GrowthDirection.West:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.South);
-                            break;
-                        case GrowthDirection.North:
-                            newGrowthData = GetDataFromDirection(lastPosition, GrowthDirection.East);
-                            break;
-                        default:
-                            newGrowthData = GetDataFromDirection(lastPosition, direction);
-                            break;
-                    }
-                }
-                break;
-        }
-
-        if (newGrowth)
-        {
-            UpdatePreviousTangents(newGrowthData.leftTangent, newGrowthData.rightTangent);
-        }
-
-        currentDirection = direction;
-
-        newTipPosition.position = newGrowthData.position;
-        newTipPosition.leftTangent = newGrowthData.leftTangent;
-        newTipPosition.rightTangent = newGrowthData.rightTangent;
     }
 
-    public void UpdateDirection()
+    private void Start()
     {
-        growthDirection = baseDirection;
-        currentDirection = growthDirection;
-        lastDirection = currentDirection;
+        currentDirection = baseDirection;
+        stageTipPosition = stageStartPosition;
+        int curX = stageTipPosition.x;
+        int curY = stageTipPosition.y;
+        GameplayManager.instance.activeMap.mapTiles[curX, curY].Enter(GetOppositeDirection(currentDirection));
+        GameplayManager.instance.activeMap.SetBlocked(stageTipPosition.x, stageTipPosition.y);
+        GameplayManager.instance.rootLayer.SetTile(stageStartPosition, GameplayManager.instance.rootRedirectTileLookup[GameplayManager.instance.rootReDirLookup[currentDirection]]);
     }
 
-    void Start()
+    private void OnDestroy()
     {
-        lastTipPosition = new RootTipData();
-        newTipPosition = new RootTipData();
-        UpdateDirection();
-    }
 
-    public bool CheckForDeath()
-    {
-        return (GameplayManager.instance.activeMap.mapTiles[stageTipPosition.x, stageTipPosition.y].config.GameOverTile);
     }
 
     void Update()
@@ -364,72 +278,43 @@ public class Root : MonoBehaviour
         if (GameplayManager.instance.state != GameState.Playing || reachedDestination)
             return;
 
-        if (!growing)
+        currentDelay = growSpeed;
+
+        if (!blocked)
         {
-            if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W))
+            if (!growing)
             {
-                Grow(GrowthDirection.North);
-            }
-            if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
-            {
-                Grow(GrowthDirection.East);
-            }
-            if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
-            {
-                Grow(GrowthDirection.South);
-            }
-            if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
-            {
-                Grow(GrowthDirection.West);
-            }
-        }
-
-        if (growing)
-        {
-            float t = (Time.time - startGrowTime) / growDuration;
-
-            RootTipData data = new RootTipData()
-            {
-                position = Vector3.Lerp(lastTipPosition.position, newTipPosition.position, t),
-                leftTangent = Vector3.Lerp(lastTipPosition.leftTangent, newTipPosition.leftTangent, t),
-                rightTangent = Vector3.Lerp(lastTipPosition.rightTangent, newTipPosition.rightTangent, t)
-            };
-            MoveTipToPosition(data);
-
-            if (t > growDuration / 2)
-            {
-                if (newGrowth) { 
-                    AddNewPreviousPosition();
-                    newGrowth = false;
-                }
-                if (t >= growDuration)
+                if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W))
                 {
-                    if (GameplayManager.instance.activeMap.mapTiles[stageTipPosition.x, stageTipPosition.y].IsDestination)
-                    {
-                        reachedDestination = true;
-                        GameplayManager.instance.totalRootsAtDestination++;
-                        if (GameplayManager.instance.CheckIfWon())
-                            GameplayManager.instance.SetGameWon();
-                        return;
-                    }
-
-                    GameplayManager.instance.activeMap.SetBlocked(stageTipPosition.x, stageTipPosition.y);
-
-                    growing = false;
-
-                    t = growDuration;                    
-
-                    if (CheckForDeath()) { 
-                        GameplayManager.instance.SetGameOver();
-                        return;
-                    }
-                    
-                    currentDirection = GetRedirectDirection(stageTipPosition, currentDirection);
-                    Grow(currentDirection);
-
+                    currentDirection = GrowthDirection.North;
+                    StartCoroutine(Grow());
+                }
+                if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
+                {
+                    currentDirection = GrowthDirection.East;
+                    StartCoroutine(Grow());
+                }
+                if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
+                {
+                    currentDirection = GrowthDirection.South;
+                    StartCoroutine(Grow());
+                }
+                if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
+                {
+                    currentDirection = GrowthDirection.West;
+                    StartCoroutine(Grow());
                 }
             }
 
+            if (growing)
+            {
+                if (IsRedirectTile(stageTipPosition))
+                {
+                    currentDelay = redirectDelay;
+                    currentDirection = GetRedirectDirection(GetOppositeDirection(currentDirection), GetRedirectionType(stageTipPosition));
+                }
+                StartCoroutine(Grow());
+            }
         }
     }
 }

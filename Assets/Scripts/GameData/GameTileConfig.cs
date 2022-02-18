@@ -9,8 +9,10 @@ public class GameTileConfig : ScriptableObject
 {
     [SerializeField] public string TileName;
     [SerializeField] public Tile TileObject;
+    [SerializeField] public TileBase AnimatedTileObject;
     [SerializeField] public TileType Type;
 
+    [SerializeField] public bool Animated;
     [SerializeField] public bool GameOverTile;
     [SerializeField] public bool DestinationTile;
 

@@ -27,7 +27,13 @@ public enum TileRedirectDirection : int
     RightUp,
     LeftUp,
     RightDown,
-    LeftDown
+    LeftDown,
+    LeftRight,
+    UpDown,
+    Up,
+    Down,
+    Left,
+    Right
 }
 
 [Serializable]
@@ -35,6 +41,10 @@ public class GameTile
 {
     public GameTileConfig config;
     public TileType tileType;
+
+    public GrowthDirection rootEnterDirection;
+    public GrowthDirection rootExitDirection;
+
     public bool blocked;
 
     public GameTile(TileType _type)
@@ -49,11 +59,30 @@ public class GameTile
         blocked = source.blocked;
     }
 
+    public void Enter(GrowthDirection fromDirection)
+    {
+        blocked = true;
+        rootEnterDirection = fromDirection;
+    }
+
+    public void Exit(GrowthDirection toDirection)
+    {
+        rootExitDirection = toDirection;
+    }
+
     public bool IsDestination
     {
         get
         {
             return config.Type == TileType.Water;
+        }
+    }
+
+    public bool IsDeathTile
+    {
+        get
+        {
+            return config.Type == TileType.Poison;
         }
     }
 
@@ -73,6 +102,17 @@ public class GameTile
                     config.Type == TileType.RootUp ||
                     config.Type == TileType.RootLeft ||
                     config.Type == TileType.RootRight);
+        }
+    }
+
+    public bool IsRedirectTile
+    {
+        get
+        {
+            return (config.Type == TileType.ReflectorTL ||
+                    config.Type == TileType.ReflectorTR ||
+                    config.Type == TileType.ReflectorBL ||
+                    config.Type == TileType.ReflectorBR);
         }
     }
 

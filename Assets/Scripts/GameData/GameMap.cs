@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 public class GameMap
 {
@@ -11,7 +12,10 @@ public class GameMap
     public int sizeY;
     public bool DebugMode;
 
+    public HistoryStack<GameTile[,]> previousMapTiles;
     public GameTile[,] mapTiles;
+
+    public bool IsDirty;
 
     public Dictionary<char, TileType> TileTypes = new Dictionary<char, TileType>()
     {
@@ -23,10 +27,10 @@ public class GameMap
         {'5', TileType.ReflectorTR },
         {'6', TileType.ReflectorBL },
         {'7', TileType.ReflectorBR },
-        {'8', TileType.RootDown },
-        {'9', TileType.RootUp },
-        {'A', TileType.RootLeft },
+        {'8', TileType.RootUp },
+        {'9', TileType.RootDown },
         {'B', TileType.RootRight },
+        {'A', TileType.RootLeft },
     };
 
     public Dictionary<TileType, char> ReverseTileTypes = new Dictionary<TileType, char>()
@@ -39,10 +43,10 @@ public class GameMap
         { TileType.ReflectorTR, '5' },
         { TileType.ReflectorBL, '6' },
         { TileType.ReflectorBR, '7' },
-        { TileType.RootDown, '8' },
-        { TileType.RootUp, '9' },
-        { TileType.RootLeft, 'A' },
-        { TileType.RootRight, 'B' }
+        { TileType.RootUp, '8' },
+        { TileType.RootDown, '9' },
+        { TileType.RootRight, 'B' },
+        { TileType.RootLeft, 'A' }
     };
 
     public GameMap(int _sizeX, int _sizeY)
@@ -53,7 +57,7 @@ public class GameMap
     }
 
     public void UpdateMapTile(int x, int y, TileType type)
-    {
+    {           
         mapTiles[x, y] = new GameTile(GameplayManager.instance.GameTileLookup[type]);
     }
 
@@ -141,7 +145,21 @@ public class GameMap
         {
             for (int y = 0; y < sizeY; y++)
             {
-                GameplayManager.instance.stageLayer.SetTile(new Vector3Int(x, y, 0), GameplayManager.instance.TileTypeLookup[mapTiles[x, y].tileType]);
+                TileType type = mapTiles[x, y].tileType;
+                Tile tile;
+                if (type == TileType.Dirt)
+                {
+                    int totalAlts = GameplayManager.instance.alternateDirtTiles.Length;
+                    int dirtTileIndex = UnityEngine.Random.Range(0, totalAlts);
+                    tile = GameplayManager.instance.alternateDirtTiles[dirtTileIndex];
+                }
+                else
+                {
+                    tile = GameplayManager.instance.TileTypeLookup[type];
+                }
+
+                GameplayManager.instance.stageLayer.SetTile(new Vector3Int(x, y, 0), tile);
+
                 if (mapTiles[x, y].IsBlockedTile)
                 {
                     SetBlocked(x, y);

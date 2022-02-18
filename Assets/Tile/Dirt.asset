@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TileName: Dirt
   TileObject: {fileID: 11400000, guid: 06c75541db8b0224cb009b413e68878a, type: 2}
+  AnimatedTileObject: {fileID: 0}
   Type: 1
+  Animated: 0
   GameOverTile: 0
   DestinationTile: 0
   RedirectDirection: 0

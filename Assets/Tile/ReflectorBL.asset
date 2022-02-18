@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TileName: Reflector BL
   TileObject: {fileID: 11400000, guid: 65ed446d94a2d3e41a9a7b1305c8d550, type: 2}
+  AnimatedTileObject: {fileID: 0}
   Type: 6
+  Animated: 0
   GameOverTile: 0
   DestinationTile: 0
   RedirectDirection: 1

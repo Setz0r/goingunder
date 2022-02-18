@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Blank
   m_EditorClassIdentifier: 
   TileName: Blank
-  TileObject: {fileID: 0}
+  TileObject: {fileID: 11400000, guid: e88eabdd44b33f74e8c9e043d323415e, type: 2}
+  AnimatedTileObject: {fileID: 0}
   Type: 0
+  Animated: 0
   GameOverTile: 0
   DestinationTile: 0
   RedirectDirection: 0
