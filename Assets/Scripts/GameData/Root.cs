@@ -44,7 +44,6 @@ public class Root : MonoBehaviour
 
     private bool growing;
     private bool blocked;
-    private bool redirecting;
     private bool reachedDestination;
 
     public Tuple<int, int> GetDestination(GrowthDirection direction)
@@ -72,7 +71,7 @@ public class Root : MonoBehaviour
     public bool DirectionBlocked(GrowthDirection direction)
     {
         Tuple<int, int> destinationPos = GetDestination(direction);
-        return GameplayManager.instance.activeMap.mapTiles[destinationPos.Item1, destinationPos.Item2].IsBlockedTile;
+        return (direction == GetOppositeDirection(growthDirection)) || GameplayManager.instance.activeMap.mapTiles[destinationPos.Item1, destinationPos.Item2].IsBlockedTile;
     }
 
     public bool IsDestinationTile(Vector3Int position)
@@ -96,8 +95,38 @@ public class Root : MonoBehaviour
         return IsRedirectTile(new Vector3Int(destinationPos.Item1, destinationPos.Item2, 0));
     }
 
+    public bool IsStuck()
+    {
+        bool blockedNorth, blockedSouth, blockedEast, blockedWest;
+        blockedNorth = DirectionBlocked(GrowthDirection.North);
+        blockedSouth = DirectionBlocked(GrowthDirection.South);
+        blockedEast = DirectionBlocked(GrowthDirection.East);
+        blockedWest = DirectionBlocked(GrowthDirection.West);
 
-    public GrowthDirection GetRedirectDirection(GrowthDirection enterDirection, TileType redirType)        
+        switch (currentDirection)
+        {
+            case GrowthDirection.North:
+                if (blockedNorth && blockedEast && blockedWest)
+                    return true;
+                break;
+            case GrowthDirection.South:
+                if (blockedSouth && blockedEast && blockedWest)
+                    return true;
+                break;
+            case GrowthDirection.East:
+                if (blockedEast && blockedNorth && blockedSouth)
+                    return true;
+                break;
+            case GrowthDirection.West:
+                if (blockedWest && blockedNorth && blockedSouth)
+                    return true;
+                break;
+        }
+
+        return false;
+    }
+
+    public GrowthDirection GetRedirectDirection(GrowthDirection enterDirection, TileType redirType)
     {
         switch (redirType)
         {
@@ -174,6 +203,7 @@ public class Root : MonoBehaviour
             blocked = true;
             yield return new WaitForSeconds(currentDelay);
             growing = true;
+            growthDirection = currentDirection;
             Tuple<int, int> destination = GetDestination(currentDirection);
             int curX = stageTipPosition.x;
             int curY = stageTipPosition.y;
@@ -241,25 +271,41 @@ public class Root : MonoBehaviour
             GameplayManager.instance.rootLayer.SetTile(stageTipPosition, GetTileByDirection(currentDirection));
 
             if (IsDestinationTile(stageTipPosition))
+            {
                 GameplayManager.instance.totalRootsAtDestination++;
+                AudioManager.instance.PlaySound(SFXType.Water);
 
-            if (GameplayManager.instance.CheckIfWon())
-                GameplayManager.instance.SetGameWon();
+                if (GameplayManager.instance.CheckIfWon())
+                    GameplayManager.instance.SetGameWon();
 
-            if (IsDeathTile(stageTipPosition))
+                growing = false;
+            }
+            else if (IsDeathTile(stageTipPosition) || IsStuck())
+            {
                 GameplayManager.instance.SetGameOver();
+                
+                if (IsDeathTile(stageTipPosition))
+                    AudioManager.instance.PlaySound(SFXType.DeathSound);
+                
+                AudioManager.instance.PlaySound(SFXType.GameOver);
 
-            blocked = false;
+                growing = false;
+            }
+            else
+                blocked = false;
         }
         else
         {
             growing = false;
+            Debug.Log("Hit Wall");
+            AudioManager.instance.PlaySound(SFXType.Wall);
         }
     }
 
     private void Start()
     {
         currentDirection = baseDirection;
+        growthDirection = baseDirection;
         stageTipPosition = stageStartPosition;
         int curX = stageTipPosition.x;
         int curY = stageTipPosition.y;
@@ -311,6 +357,7 @@ public class Root : MonoBehaviour
                 if (IsRedirectTile(stageTipPosition))
                 {
                     currentDelay = redirectDelay;
+                    AudioManager.instance.PlaySound(SFXType.Turn);
                     currentDirection = GetRedirectDirection(GetOppositeDirection(currentDirection), GetRedirectionType(stageTipPosition));
                 }
                 StartCoroutine(Grow());

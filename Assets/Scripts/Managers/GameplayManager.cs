@@ -236,7 +236,7 @@ public class GameplayManager : MonoBehaviour
     {
         if (state == GameState.WonGame)
             return;
-
+        AudioManager.instance.PlaySound(SFXType.Win);
         state = GameState.WonGame;
         gameWonText.SetActive(true);
         StartCoroutine(GameWon());
@@ -294,5 +294,10 @@ public class GameplayManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
             Application.Quit();
+        if (Input.GetKeyDown(KeyCode.F4))
+            AudioManager.instance.PlayMusic(MusicType.Gameplay);
+        if (Input.GetKeyDown(KeyCode.F5))
+            AudioManager.instance.StopMusic();
+
     }
 }
