@@ -82,6 +82,8 @@ public class GameplayManager : MonoBehaviour
     public int totalRoots;
     public int totalRootsAtDestination;
 
+    public bool playTesting = false;
+
     public void PushHistory()
     {
 
@@ -221,6 +223,8 @@ public class GameplayManager : MonoBehaviour
 
         state = GameState.GameOver;
         gameOverText.SetActive(true);
+        if (playTesting)
+            EditorManager.instance.designButton.SetActive(false);
         StartCoroutine(GameOver());
     }
 
@@ -230,6 +234,8 @@ public class GameplayManager : MonoBehaviour
         gameOverText.SetActive(false);
         ResetMap();
         state = GameState.Playing;
+        if (playTesting)
+            EditorManager.instance.designButton.SetActive(true);
     }
 
     public void SetGameWon()
@@ -239,6 +245,8 @@ public class GameplayManager : MonoBehaviour
         AudioManager.instance.PlaySound(SFXType.Win);
         state = GameState.WonGame;
         gameWonText.SetActive(true);
+        if (playTesting)
+            EditorManager.instance.designButton.SetActive(false);
         StartCoroutine(GameWon());
     }
 
@@ -248,6 +256,8 @@ public class GameplayManager : MonoBehaviour
         gameWonText.SetActive(false);
         ResetMap();
         state = GameState.Playing;
+        if (playTesting)
+            EditorManager.instance.designButton.SetActive(true);
     }
 
     private void Awake()
@@ -257,8 +267,6 @@ public class GameplayManager : MonoBehaviour
 
     void Start()
     {
-        DontDestroyOnLoad(this);  
-
         GameTileLookup = new Dictionary<TileType, GameTile>();
         TileTypeLookup = new Dictionary<TileType, Tile>();
         foreach(GameTileConfig tilecfg in TileList)
@@ -293,11 +301,16 @@ public class GameplayManager : MonoBehaviour
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape))
-            Application.Quit();
+            GameSceneManager.instance.LoadMainMenuScene();
         if (Input.GetKeyDown(KeyCode.F4))
             AudioManager.instance.PlayMusic(MusicType.Gameplay);
         if (Input.GetKeyDown(KeyCode.F5))
             AudioManager.instance.StopMusic();
+
+        if (RootsGrowing())
+            AudioManager.instance.PlaySound(SFXType.Grow);
+        else
+            AudioManager.instance.StopSound(SFXType.Grow);
 
     }
 }

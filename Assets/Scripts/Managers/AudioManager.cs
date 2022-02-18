@@ -32,13 +32,17 @@ public class AudioManager : MonoBehaviour
     public static AudioManager instance;
 
     public AudioMixer mainMixer;
-    
+
     // Music
+    public bool musicMuted;
+    public float musicVolume;
     public AudioSource backgroundMusic;
     public AudioClip menuMusic;
     public AudioClip gameMusic;
 
     // SFX
+    public bool sfxMuted;
+    public float sfxVolume;
     public AudioSource growSound;
     public AudioSource winSound;
     public AudioSource gameOverSound;
@@ -142,21 +146,65 @@ public class AudioManager : MonoBehaviour
 
     }
 
+    public static IEnumerator StartFade(AudioMixer audioMixer, string exposedParam, float duration, float targetVolume)
+    {
+        float currentTime = 0;
+        float currentVol;
+        audioMixer.GetFloat(exposedParam, out currentVol);
+        currentVol = Mathf.Pow(10, currentVol / 20);
+        float targetValue = Mathf.Clamp(targetVolume, 0.0001f, 1);
+        while (currentTime < duration)
+        {
+            currentTime += Time.deltaTime;
+            float newVol = Mathf.Lerp(currentVol, targetValue, currentTime / duration);
+            audioMixer.SetFloat(exposedParam, Mathf.Log10(newVol) * 20);
+            yield return null;
+        }
+        yield break;
+    }
+
+    public void FadeOutMusic(float speed)
+    {
+        StartCoroutine(StartFade(mainMixer, "MusicVolume", speed, 0));
+    }
+
+    public void FadeInMusic(float speed)
+    {
+        StartCoroutine(StartFade(mainMixer, "MusicVolume", speed, musicVolume));
+    }
+
+    public void ToggleMusic(bool muted)
+    {
+        backgroundMusic.mute = muted;
+        musicMuted = muted;
+    }
+
+    public void ToggleSFX(bool muted)
+    {
+        mainMixer.SetFloat("SFXVolume", muted ? -80 : sfxVolume);
+        sfxMuted = muted;
+    }
+
     private void Awake()
     {
-        instance = this;
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);    
+        } else if (instance != this)
+        {
+            Destroy(gameObject);
+        }
     }
 
     private void Start()
     {
-        DontDestroyOnLoad(this);
+        mainMixer.SetFloat("MusicVolume", musicVolume);
+        mainMixer.SetFloat("SFXVolume", sfxVolume);
     }
 
     private void Update()
     {
-        if (GameplayManager.instance.RootsGrowing())
-            PlaySound(SFXType.Grow);
-        else 
-            StopSound(SFXType.Grow);
+
     }
 }

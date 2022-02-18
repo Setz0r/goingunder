@@ -297,7 +297,6 @@ public class Root : MonoBehaviour
         else
         {
             growing = false;
-            Debug.Log("Hit Wall");
             AudioManager.instance.PlaySound(SFXType.Wall);
         }
     }

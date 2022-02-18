@@ -17,6 +17,8 @@ public class EditorManager : MonoBehaviour
     public GameObject clearButton;
     public GameObject loadMapButton;
     public GameObject saveMapButton;
+    public GameObject designButton;
+    public GameObject playtestButton;
 
     public GameObject tileLocLabel;
 
@@ -51,6 +53,9 @@ public class EditorManager : MonoBehaviour
         {
             GameplayManager.instance.activeMap.ClearBlocks();
             GameplayManager.instance.state = GameState.LevelEditing;
+            GameplayManager.instance.playTesting = false;
+            designButton.SetActive(false);
+            playtestButton.SetActive(true);
             ShowEditUI();
             editing = true;
         }
@@ -62,6 +67,9 @@ public class EditorManager : MonoBehaviour
         {
             GameplayManager.instance.activeMap.SetupBlocks();
             GameplayManager.instance.state = GameState.Playing;
+            GameplayManager.instance.playTesting = true;
+            designButton.SetActive(true);
+            playtestButton.SetActive(false);
             HideEditUi();
             editing = false;
         }
@@ -112,12 +120,10 @@ public class EditorManager : MonoBehaviour
 
     private void Awake()
     {
-        instance = this;
-    }
-
-    private void Start()
-    {
-        DontDestroyOnLoad(this);
+        if (instance == null)
+        {
+            instance = this;
+        } 
     }
 
 }
