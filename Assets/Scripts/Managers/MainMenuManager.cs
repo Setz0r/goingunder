@@ -7,6 +7,7 @@ public class MainMenuManager : MonoBehaviour
 {
     public GameObject musicToggle;
     public GameObject sfxToggle;
+    public GameObject quitButton;
 
     public void ToggleMusic()
     {
@@ -20,16 +21,35 @@ public class MainMenuManager : MonoBehaviour
 
     public void StartGame()
     {
-        GameSceneManager.instance.LoadGameplayScene();
+        Fader.instance.FadeOut();
+    }
+
+    public void Quit()
+    {
+#if (UNITY_EDITOR || DEVELOPMENT_BUILD)
+        Debug.Log(this.name + " : " + this.GetType() + " : " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+#endif
+#if (UNITY_EDITOR)
+        UnityEditor.EditorApplication.isPlaying = false;
+#elif (UNITY_STANDALONE)
+    Application.Quit();
+#elif (UNITY_WEBGL)
+    Application.OpenURL("about:blank");
+#endif
     }
 
     public void QuitGame()
     {
-        Application.Quit();
+        Quit();
     }
 
     private void Start()
     {
+        if (Application.platform == RuntimePlatform.WebGLPlayer)
+        {
+            quitButton.SetActive(false);
+        }
+
         sfxToggle.GetComponent<Toggle>().SetIsOnWithoutNotify(!AudioManager.instance.sfxMuted);
         musicToggle.GetComponent<Toggle>().SetIsOnWithoutNotify(!AudioManager.instance.musicMuted);
 

@@ -80,7 +80,10 @@ public class GameplayManager : MonoBehaviour
     public GameState state;
     public bool rootsGrowing;
     public int totalRoots;
+    public int prevTotalRootsAtDestination;
     public int totalRootsAtDestination;
+    public int prevTotalRootsStuck;
+    public int totalRootsStuck;
 
     public bool playTesting = false;
 
@@ -210,6 +213,7 @@ public class GameplayManager : MonoBehaviour
     public void ResetMap()
     {
         totalRootsAtDestination = 0;
+        totalRootsStuck = 0;
         activeMap.ClearBlocks();
         activeMap.SetupBlocks();
         ClearRoots();
@@ -295,13 +299,23 @@ public class GameplayManager : MonoBehaviour
 
     public bool CheckIfWon()
     {
-        return (totalRoots == totalRootsAtDestination);
+        return (totalRootsAtDestination > 0);
+    }
+
+    public bool CheckIfGameOver()
+    {
+        return (totalRootsStuck == totalRoots);
+    }
+
+    public void GoToMainMenu()
+    {
+        GameSceneManager.instance.LoadMainMenuScene();
     }
 
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape))
-            GameSceneManager.instance.LoadMainMenuScene();
+            Fader.instance.FadeOut();
         if (Input.GetKeyDown(KeyCode.F4))
             AudioManager.instance.PlayMusic(MusicType.Gameplay);
         if (Input.GetKeyDown(KeyCode.F5))

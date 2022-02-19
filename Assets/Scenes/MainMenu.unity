@@ -150,7 +150,7 @@ RectTransform:
   m_GameObject: {fileID: 30985711}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 533838123}
   m_Father: {fileID: 596942657}
@@ -225,15 +225,15 @@ RectTransform:
   m_GameObject: {fileID: 90318664}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.75, y: 0.75, z: 1}
   m_Children:
   - {fileID: 465775385}
   m_Father: {fileID: 1801719048}
-  m_RootOrder: 6
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -536.40015, y: -140.7}
+  m_AnchoredPosition: {x: -494.7999, y: -107.99997}
   m_SizeDelta: {x: 160, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &90318666
@@ -326,11 +326,11 @@ RectTransform:
   m_LocalScale: {x: 0.75, y: 0.75, z: 1}
   m_Children: []
   m_Father: {fileID: 1801719048}
-  m_RootOrder: 4
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 859, y: 203}
+  m_AnchoredPosition: {x: 850, y: 375}
   m_SizeDelta: {x: 456, y: 407}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &188511714
@@ -516,15 +516,15 @@ RectTransform:
   m_GameObject: {fileID: 436724789}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalScale: {x: 0.75, y: 0.75, z: 1}
   m_Children:
   - {fileID: 1755454554}
   m_Father: {fileID: 1801719048}
-  m_RootOrder: 1
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -551.2001, y: 60.300007}
+  m_AnchoredPosition: {x: -466, y: 3.3000107}
   m_SizeDelta: {x: 424, y: 113}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &436724791
@@ -648,7 +648,7 @@ RectTransform:
   m_GameObject: {fileID: 465775384}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 1026087897}
   m_Father: {fileID: 90318665}
@@ -798,15 +798,15 @@ RectTransform:
   m_GameObject: {fileID: 596942656}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.75, y: 0.75, z: 1}
   m_Children:
   - {fileID: 30985712}
   m_Father: {fileID: 1801719048}
-  m_RootOrder: 7
+  m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -427.20007, y: -140.70003}
+  m_AnchoredPosition: {x: -330.79987, y: -108}
   m_SizeDelta: {x: 160, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &596942658
@@ -1156,15 +1156,15 @@ RectTransform:
   m_GameObject: {fileID: 1375819997}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalScale: {x: 0.75, y: 0.75, z: 1}
   m_Children:
   - {fileID: 1915766020}
   m_Father: {fileID: 1801719048}
-  m_RootOrder: 2
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -551.2, y: -37}
+  m_AnchoredPosition: {x: -465.9999, y: -267}
   m_SizeDelta: {x: 424, y: 113}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1375819999
@@ -1291,12 +1291,12 @@ RectTransform:
   m_LocalScale: {x: 0.75, y: 0.75, z: 1}
   m_Children: []
   m_Father: {fileID: 1801719048}
-  m_RootOrder: 3
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 501, y: 220}
-  m_SizeDelta: {x: 456, y: 364}
+  m_AnchoredPosition: {x: 416, y: 280}
+  m_SizeDelta: {x: 456, y: 658}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1626669197
 MonoBehaviour:
@@ -1446,6 +1446,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   musicToggle: {fileID: 90318664}
   sfxToggle: {fileID: 596942656}
+  quitButton: {fileID: 1375819997}
 --- !u!4 &1779695351
 Transform:
   m_ObjectHideFlags: 0
@@ -1552,13 +1553,13 @@ RectTransform:
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_Children:
   - {fileID: 686770647}
-  - {fileID: 436724790}
-  - {fileID: 1375819998}
   - {fileID: 1626669196}
   - {fileID: 188511713}
-  - {fileID: 2006673056}
+  - {fileID: 436724790}
+  - {fileID: 1375819998}
   - {fileID: 90318665}
   - {fileID: 596942657}
+  - {fileID: 2006673056}
   m_Father: {fileID: 0}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -2595,6 +2596,7 @@ GameObject:
   - component: {fileID: 2006673058}
   - component: {fileID: 2006673057}
   - component: {fileID: 2006673059}
+  - component: {fileID: 2006673060}
   m_Layer: 5
   m_Name: FadePanel
   m_TagString: Untagged
@@ -2614,7 +2616,7 @@ RectTransform:
   m_LocalScale: {x: 1.1, y: 1.1, z: 1}
   m_Children: []
   m_Father: {fileID: 1801719048}
-  m_RootOrder: 5
+  m_RootOrder: 7
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
@@ -2634,7 +2636,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -2678,3 +2680,31 @@ Animator:
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorControllerStateOnDisable: 0
+--- !u!114 &2006673060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2006673055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c333ca8bb0a6f94dbe752a07d5410c9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 2006673059}
+  m_OnFaded:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1360742588}
+        m_TargetAssemblyTypeName: GameSceneManager, Assembly-CSharp
+        m_MethodName: LoadGameplayScene
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2

@@ -270,17 +270,7 @@ public class Root : MonoBehaviour
 
             GameplayManager.instance.rootLayer.SetTile(stageTipPosition, GetTileByDirection(currentDirection));
 
-            if (IsDestinationTile(stageTipPosition))
-            {
-                GameplayManager.instance.totalRootsAtDestination++;
-                AudioManager.instance.PlaySound(SFXType.Water);
-
-                if (GameplayManager.instance.CheckIfWon())
-                    GameplayManager.instance.SetGameWon();
-
-                growing = false;
-            }
-            else if (IsDeathTile(stageTipPosition) || IsStuck())
+            if (IsDeathTile(stageTipPosition))
             {
                 GameplayManager.instance.SetGameOver();
                 
@@ -288,6 +278,28 @@ public class Root : MonoBehaviour
                     AudioManager.instance.PlaySound(SFXType.DeathSound);
                 
                 AudioManager.instance.PlaySound(SFXType.GameOver);
+
+                growing = false;
+            }
+            else if (IsStuck() && !IsDestinationTile(stageTipPosition))
+            {
+                GameplayManager.instance.totalRootsStuck++;
+                if (GameplayManager.instance.CheckIfGameOver())
+                {
+                    GameplayManager.instance.SetGameOver();
+
+                    AudioManager.instance.PlaySound(SFXType.GameOver);
+
+                    growing = false;
+                }
+            }    
+            else if (IsDestinationTile(stageTipPosition) && DirectionBlocked(growthDirection))
+            {
+                GameplayManager.instance.totalRootsAtDestination++;
+                AudioManager.instance.PlaySound(SFXType.Water);
+
+                if (GameplayManager.instance.CheckIfWon())
+                    GameplayManager.instance.SetGameWon();
 
                 growing = false;
             }
@@ -334,17 +346,17 @@ public class Root : MonoBehaviour
                     currentDirection = GrowthDirection.North;
                     StartCoroutine(Grow());
                 }
-                if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
+                else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
                 {
                     currentDirection = GrowthDirection.East;
                     StartCoroutine(Grow());
                 }
-                if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
+                else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
                 {
                     currentDirection = GrowthDirection.South;
                     StartCoroutine(Grow());
                 }
-                if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
+                else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
                 {
                     currentDirection = GrowthDirection.West;
                     StartCoroutine(Grow());
