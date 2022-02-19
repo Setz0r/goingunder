@@ -12,8 +12,10 @@ public enum GameState : int
     MainMenu,
     LevelEditing,
     Playing,
+    Paused,
     GameOver,
-    WonGame
+    WonGame,
+    Leaving
 }
 
 [Serializable]
@@ -34,6 +36,9 @@ public class GameplayManager : MonoBehaviour
 {
     public static GameplayManager instance;
 
+    public GameObject pauseView;
+    public GameObject undoButton;
+    
     public Grid gameGrid;
     public Tilemap backgroundLayer;
     public Tilemap stageLayer;
@@ -84,6 +89,8 @@ public class GameplayManager : MonoBehaviour
     public int totalRootsAtDestination;
     public int prevTotalRootsStuck;
     public int totalRootsStuck;
+
+    public bool undoAvailable;
 
     public bool playTesting = false;
 
@@ -212,12 +219,14 @@ public class GameplayManager : MonoBehaviour
 
     public void ResetMap()
     {
+        undoAvailable = true;
         totalRootsAtDestination = 0;
         totalRootsStuck = 0;
         activeMap.ClearBlocks();
         activeMap.SetupBlocks();
         ClearRoots();
         PlaceRoots();
+        ShowUndo();
     }
 
     public void SetGameOver()
@@ -225,6 +234,7 @@ public class GameplayManager : MonoBehaviour
         if (state == GameState.GameOver)
             return;
 
+        AudioManager.instance.StopSound(SFXType.Grow);
         state = GameState.GameOver;
         gameOverText.SetActive(true);
         if (playTesting)
@@ -246,6 +256,9 @@ public class GameplayManager : MonoBehaviour
     {
         if (state == GameState.WonGame)
             return;
+
+        AudioManager.instance.StopSound(SFXType.Grow);
+
         AudioManager.instance.PlaySound(SFXType.Win);
         state = GameState.WonGame;
         gameWonText.SetActive(true);
@@ -292,9 +305,12 @@ public class GameplayManager : MonoBehaviour
         }
 
         InitializeMap();
-        LoadLevel(1);
-        
-        EditorManager.instance.StartEditing();
+        LoadLevel(16);
+        PlaceRoots();
+        state = GameState.Playing;
+        undoAvailable = true;
+        ShowUndo();
+        //EditorManager.instance.StartEditing();
     }
 
     public bool CheckIfWon()
@@ -312,19 +328,96 @@ public class GameplayManager : MonoBehaviour
         GameSceneManager.instance.LoadMainMenuScene();
     }
 
+    public void ShowPause()
+    {
+        pauseView.SetActive(true);
+        state = GameState.Paused;
+    }
+
+    public void HidePause()
+    {
+        pauseView.SetActive(false);
+        state = GameState.Playing;
+    }
+
+    public void ResumeButtonPress()
+    {
+        HidePause();
+    }
+
+    public void RetryButtonPress()
+    {
+        ResetMap();
+        state = GameState.Playing;
+        HidePause();
+    }
+
+    public void QuitToMenuPress()
+    {
+        state = GameState.Leaving;
+        Fader.instance.FadeOut();
+        HidePause();
+    }
+
+    public void PerformUndo()
+    {
+
+    }
+
+    public void ShowUndo()
+    {
+        undoButton.GetComponent<Animator>().SetBool("ShowUndo", true);
+    }
+
+    public void HideUndo()
+    {
+        undoButton.GetComponent<Animator>().SetBool("ShowUndo", false);
+    }
+
+    public void UndoPress()
+    {
+        if (undoAvailable)
+        {
+            undoAvailable = false;
+            HideUndo();
+        }
+    }
+
+    public void QuitToDesktopPress()
+    {
+        HidePause();
+        state = GameState.Leaving;
+#if (UNITY_EDITOR || DEVELOPMENT_BUILD)
+        Debug.Log(this.name + " : " + this.GetType() + " : " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+#endif
+#if (UNITY_EDITOR)
+        UnityEditor.EditorApplication.isPlaying = false;
+#elif (UNITY_STANDALONE)
+        Application.Quit();
+#elif (UNITY_WEBGL)
+        Application.OpenURL("about:blank");
+#endif
+    }
+
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
-            Fader.instance.FadeOut();
-        if (Input.GetKeyDown(KeyCode.F4))
+        if (state == GameState.Playing && Input.GetKeyDown(KeyCode.Escape))
+            ShowPause();
+        else if (state == GameState.Paused && Input.GetKeyDown(KeyCode.Escape))
+            HidePause();
+        else if (Input.GetKeyDown(KeyCode.F4))
             AudioManager.instance.PlayMusic(MusicType.Gameplay);
-        if (Input.GetKeyDown(KeyCode.F5))
+        else if (Input.GetKeyDown(KeyCode.F5))
             AudioManager.instance.StopMusic();
 
-        if (RootsGrowing())
+        if (state == GameState.Playing && RootsGrowing())
             AudioManager.instance.PlaySound(SFXType.Grow);
         else
             AudioManager.instance.StopSound(SFXType.Grow);
 
+        if (state == GameState.Playing && undoAvailable && (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Z)))
+        {
+            UndoPress();
+        }
     }
 }
