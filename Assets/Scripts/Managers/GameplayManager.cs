@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+
 using UnityEngine.Tilemaps;
 using System.Linq;
 
@@ -36,75 +37,138 @@ public class GameplayManager : MonoBehaviour
 {
     public static GameplayManager instance;
 
+    #region UI Element Refs
+    [Header("== UI Element Refs ==")]
     public GameObject pauseView;
     public GameObject undoButton;
-    
+    public GameObject gameOverText;
+    public GameObject gameWonText;
+    #endregion
+
+    #region Tutorial Image Refs
+    [Header("== Tutorial Refs ==")]
+    public GameObject tutRef_1;
+    public GameObject tutRef_3;
+    public GameObject tutRef_4;
+    public GameObject tutRef_5;
+    public GameObject tutRef_10;
+    public GameObject tutRef_14;
+    #endregion
+
+    #region Grid/Tile Refs
+    [Header("== Grid/Tile Refs ==")]
     public Grid gameGrid;
     public Tilemap backgroundLayer;
     public Tilemap stageLayer;
     public Tilemap rootLayer;
     public Tilemap overlayLayer;
     public Tilemap debugLayer;
-    
     public Tile debugTile;
-
-    public GameObject gameOverText;
-    public GameObject gameWonText;
-
     public Tile backgroundTile;
     public Tile[] alternateBGTiles;
     public Tile dirtTile;
     public Tile[] alternateDirtTiles;
     public TileBase poisonTile;
-    public TileBase waterTile;    
+    public TileBase waterTile;
+    private BoundsInt stageBounds;
+    #endregion
 
+    #region History Refs
+    [Header("== History Refs ==")]
+    public bool historyRecorded;
+    public bool hasMoved;
+    public bool usedUndo;
+    public bool undoAvailable;
+    public TileBase[] undoTiles;
+    #endregion
+
+    #region Root Refs/Data
+    [Header("== Root Refs/Data ==")]
     public GameObject rootPrefab;
     public List<GameObject> activeRoots = new List<GameObject>();
     public Tile[] alternateHorRoots;
     public Tile[] alternateVertRoots;
-    
-    public GameTileConfig[] TileList;
-
-    public Dictionary<TileType, GameTileConfig> GameTileConfigLookup;
-    public Dictionary<TileType, GameTile> GameTileLookup;
-    public Dictionary<TileType, Tile> TileTypeLookup; 
-
-    public List<RootRedirectTile> rootRedirectTiles;
-    public Dictionary<TileRedirectDirection, Tile> rootRedirectTileLookup;
-    
-    public List<RootDirRedir> rootDirRedirs;
-    public Dictionary<GrowthDirection, TileRedirectDirection> rootReDirLookup;
-
-    public GameMap activeMap;
-
-    public int MaxHistory = 5;
-
-    public int MapMaxWidth = 32;
-    public int MapMaxHeight = 18;
-
-    public GameState state;
     public bool rootsGrowing;
     public int totalRoots;
-    public int prevTotalRootsAtDestination;
+    public int rootsGrowingCounter;
     public int totalRootsAtDestination;
     public int prevTotalRootsStuck;
     public int totalRootsStuck;
+    #endregion
 
-    public bool undoAvailable;
+    #region Game Tile Data
+    [Header("== Game Tile Data ==")]
+    public GameTileConfig[] TileList;
+    public Dictionary<TileType, GameTileConfig> GameTileConfigLookup;
+    public Dictionary<TileType, GameTile> GameTileLookup;
+    public Dictionary<TileType, Tile> TileTypeLookup;
+    public List<RootRedirectTile> rootRedirectTiles;
+    public Dictionary<TileRedirectDirection, Tile> rootRedirectTileLookup;
+    public List<RootDirRedir> rootDirRedirs;
+    public Dictionary<GrowthDirection, TileRedirectDirection> rootReDirLookup;
+    #endregion
 
+    #region Map Data
+    [Header("== Map Data ==")]
+    public GameMap activeMap;
+    public int MaxHistory = 1;
+    public int MapMaxWidth = 32;
+    public int MapMaxHeight = 18;
+    #endregion
+
+    #region Gameplay Data
+    [Header("== Gameplay Data ==")]
+    public GameState state;
+    public int currentLevel = 1;
+    public int maxLevel = 16;
+    public int movesCounter;
     public bool playTesting = false;
+    #endregion
 
-    public void PushHistory()
+    #region History Methods
+    //////////////////////////////////////////////////////////
+    ///
+    ///         HISTORY METHODS
+    ///
+    //////////////////////////////////////////////////////////
+
+    public void BackupLastRootHistory()
     {
-
-        activeMap.previousMapTiles.Push(activeMap.mapTiles.Clone() as GameTile[,]);
+        historyRecorded = true;
+        activeMap.BackupTiles();
+        prevTotalRootsStuck = totalRootsStuck;
+        undoTiles = rootLayer.GetTilesBlock(stageBounds);
     }
 
-    public void PopHistory()
+    public void RestoreRootHistory()
     {
-        if (activeMap.previousMapTiles.Items.Count > 0)
-            activeMap.mapTiles = activeMap.previousMapTiles.Pop().Clone() as GameTile[,];
+        totalRootsStuck = prevTotalRootsStuck;
+        activeMap.RestoreTiles();
+        rootLayer.SetTilesBlock(stageBounds, undoTiles);
     }
+
+    public void PerformUndo()
+    {
+        usedUndo = true;
+        undoAvailable = false;
+        HideUndo();
+        RestoreRootHistory();
+        ResetLastRootPositions();
+    }
+
+    public void UndoPress()
+    {
+        if (undoAvailable && !rootsGrowing)
+            PerformUndo();
+    }
+    #endregion
+
+    #region Map Methods
+    //////////////////////////////////////////////////////////
+    ///
+    ///         MAP METHODS
+    ///
+    //////////////////////////////////////////////////////////
 
     public void InitializeMap()
     {
@@ -119,6 +183,14 @@ public class GameplayManager : MonoBehaviour
             }
         }
     }
+    #endregion
+
+    #region Root Methods
+    //////////////////////////////////////////////////////////
+    ///
+    ///         ROOT METHODS
+    ///
+    //////////////////////////////////////////////////////////
 
     public void ClearRoots()
     {
@@ -181,13 +253,13 @@ public class GameplayManager : MonoBehaviour
                 growDirection = GrowthDirection.North;
                 break;
             case TileType.RootDown:
-                growDirection= GrowthDirection.South;
+                growDirection = GrowthDirection.South;
                 break;
             case TileType.RootLeft:
                 growDirection = GrowthDirection.West;
                 break;
             case TileType.RootRight:
-                growDirection= GrowthDirection.East;
+                growDirection = GrowthDirection.East;
                 break;
         }
 
@@ -203,7 +275,7 @@ public class GameplayManager : MonoBehaviour
 
     public bool RootsGrowing()
     {
-        foreach(GameObject root in activeRoots)
+        foreach (GameObject root in activeRoots)
         {
             if (root.GetComponent<Root>().Growing)
                 return true;
@@ -211,121 +283,135 @@ public class GameplayManager : MonoBehaviour
         return false;
     }
 
+    public int TotalRootsGrowing()
+    {
+        int counter = 0;
+        foreach (GameObject root in activeRoots)
+        {
+            if (root.GetComponent<Root>().Growing)
+                counter++;
+        }
+        return counter;
+    }
+
+    public void ResetLastRootPositions()
+    {
+        if (activeRoots != null && activeRoots.Count > 0)
+        {
+            foreach (var root in activeRoots)
+            {
+                Debug.Log("current tip position: " + root.GetComponent<Root>().stageTipPosition.ToString());
+                root.GetComponent<Root>().ResetPosition();
+                Debug.Log("reset to old position: " + root.GetComponent<Root>().stageTipPosition.ToString());
+            }
+        }
+    }
+
+    public void MakeRootsGrow(GrowthDirection direction)
+    {
+        bool CanAnyRootsGrow = false;
+        foreach (GameObject root in activeRoots)
+        {
+            if (root.GetComponent<Root>().CanRootGrow(direction))
+            {
+                CanAnyRootsGrow = true;
+                break;
+            }
+        }
+        if (CanAnyRootsGrow)
+        {
+            if (!usedUndo)
+            {
+                BackupLastRootHistory();
+                if (!undoAvailable)
+                {
+                    undoAvailable = true;
+                    ShowUndo();
+                }
+            }
+            foreach (GameObject root in activeRoots)
+            {
+                root.GetComponent<Root>().TryGrow(direction);
+            }
+        }
+    }
+    #endregion
+
+    #region Level Methods
+    //////////////////////////////////////////////////////////
+    ///
+    ///         LEVEL METHODS
+    ///
+    //////////////////////////////////////////////////////////
+
+    public void BeatGame()
+    {
+
+    }
 
     public void LoadLevel(int levelNum)
     {
         activeMap.LoadMapFile(levelNum.ToString());
     }
 
+    public void AdvanceLevel()
+    {
+        currentLevel++;
+        if (currentLevel > maxLevel)
+        {
+            GoToCredits();
+        }
+        else
+        {
+            LoadLevel(currentLevel);
+            ShowTutorialImage(currentLevel);
+            LevelDisplay.instance.Show(currentLevel);
+        }
+    }
+
     public void ResetMap()
     {
-        undoAvailable = true;
+        if (undoAvailable)
+            HideUndo();
+        usedUndo = false;
+        movesCounter = 0;
         totalRootsAtDestination = 0;
         totalRootsStuck = 0;
+        prevTotalRootsStuck = 0;
         activeMap.ClearBlocks();
         activeMap.SetupBlocks();
         ClearRoots();
         PlaceRoots();
-        ShowUndo();
     }
+    #endregion
 
-    public void SetGameOver()
+    #region Navigation/Pause/UI Methods
+    //////////////////////////////////////////////////////////
+    ///
+    ///         NAVIGATION/PAUSE/UI METHODS
+    ///
+    //////////////////////////////////////////////////////////
+
+    public void ShowUndo()
     {
-        if (state == GameState.GameOver)
-            return;
-
-        AudioManager.instance.StopSound(SFXType.Grow);
-        state = GameState.GameOver;
-        gameOverText.SetActive(true);
-        if (playTesting)
-            EditorManager.instance.designButton.SetActive(false);
-        StartCoroutine(GameOver());
-    }
-
-    IEnumerator GameOver()
-    {
-        yield return new WaitForSeconds(5);
-        gameOverText.SetActive(false);
-        ResetMap();
-        state = GameState.Playing;
-        if (playTesting)
-            EditorManager.instance.designButton.SetActive(true);
-    }
-
-    public void SetGameWon()
-    {
-        if (state == GameState.WonGame)
-            return;
-
-        AudioManager.instance.StopSound(SFXType.Grow);
-
-        AudioManager.instance.PlaySound(SFXType.Win);
-        state = GameState.WonGame;
-        gameWonText.SetActive(true);
-        if (playTesting)
-            EditorManager.instance.designButton.SetActive(false);
-        StartCoroutine(GameWon());
-    }
-
-    IEnumerator GameWon()
-    {
-        yield return new WaitForSeconds(5);
-        gameWonText.SetActive(false);
-        ResetMap();
-        state = GameState.Playing;
-        if (playTesting)
-            EditorManager.instance.designButton.SetActive(true);
-    }
-
-    private void Awake()
-    {
-        instance = this;
-    }
-
-    void Start()
-    {
-        GameTileLookup = new Dictionary<TileType, GameTile>();
-        TileTypeLookup = new Dictionary<TileType, Tile>();
-        foreach(GameTileConfig tilecfg in TileList)
-        {
-            TileTypeLookup[tilecfg.Type] = tilecfg.TileObject;
-            GameTileLookup[tilecfg.Type] = new GameTile(tilecfg.Type) { config = tilecfg };
-        }
-
-        rootRedirectTileLookup = new Dictionary<TileRedirectDirection, Tile>();
-        foreach (RootRedirectTile tile in rootRedirectTiles)
-        {
-            rootRedirectTileLookup[tile.redirectDirection] = tile.rootPieceTile;
-        }
-
-        rootReDirLookup = new Dictionary<GrowthDirection, TileRedirectDirection>();
-        foreach (RootDirRedir dr in rootDirRedirs)
-        {
-            rootReDirLookup[dr.direction] = dr.redirectDirection;
-        }
-
-        InitializeMap();
-        LoadLevel(16);
-        PlaceRoots();
-        state = GameState.Playing;
         undoAvailable = true;
-        ShowUndo();
-        //EditorManager.instance.StartEditing();
+        undoButton.GetComponent<Animator>().SetBool("ShowUndo", true);
     }
 
-    public bool CheckIfWon()
+    public void HideUndo()
     {
-        return (totalRootsAtDestination > 0);
-    }
-
-    public bool CheckIfGameOver()
-    {
-        return (totalRootsStuck == totalRoots);
+        undoAvailable = false;
+        undoButton.GetComponent<Animator>().SetBool("ShowUndo", false);
     }
 
     public void GoToMainMenu()
     {
         GameSceneManager.instance.LoadMainMenuScene();
+    }
+
+    public void GoToCredits()
+    {
+        GameSceneManager.instance.LoadCreditsScene();
     }
 
     public void ShowPause()
@@ -359,30 +445,6 @@ public class GameplayManager : MonoBehaviour
         HidePause();
     }
 
-    public void PerformUndo()
-    {
-
-    }
-
-    public void ShowUndo()
-    {
-        undoButton.GetComponent<Animator>().SetBool("ShowUndo", true);
-    }
-
-    public void HideUndo()
-    {
-        undoButton.GetComponent<Animator>().SetBool("ShowUndo", false);
-    }
-
-    public void UndoPress()
-    {
-        if (undoAvailable)
-        {
-            undoAvailable = false;
-            HideUndo();
-        }
-    }
-
     public void QuitToDesktopPress()
     {
         HidePause();
@@ -399,25 +461,205 @@ public class GameplayManager : MonoBehaviour
 #endif
     }
 
-    void Update()
+    public void HideTutorialImages()
     {
-        if (state == GameState.Playing && Input.GetKeyDown(KeyCode.Escape))
-            ShowPause();
-        else if (state == GameState.Paused && Input.GetKeyDown(KeyCode.Escape))
-            HidePause();
-        else if (Input.GetKeyDown(KeyCode.F4))
-            AudioManager.instance.PlayMusic(MusicType.Gameplay);
-        else if (Input.GetKeyDown(KeyCode.F5))
-            AudioManager.instance.StopMusic();
+        tutRef_1.SetActive(false);
+        tutRef_3.SetActive(false);
+        tutRef_4.SetActive(false);
+        tutRef_5.SetActive(false);
+        tutRef_10.SetActive(false);
+        tutRef_14.SetActive(false);
+    }
 
-        if (state == GameState.Playing && RootsGrowing())
-            AudioManager.instance.PlaySound(SFXType.Grow);
-        else
-            AudioManager.instance.StopSound(SFXType.Grow);
-
-        if (state == GameState.Playing && undoAvailable && (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Z)))
+    public void ShowTutorialImage(int level)
+    {
+        HideTutorialImages();
+        switch (level)
         {
-            UndoPress();
+            case 1:
+                tutRef_1.SetActive(true);
+                break;
+            case 3:
+                tutRef_3.SetActive(true);
+                break;
+            case 4:
+                tutRef_4.SetActive(true);
+                break;
+            case 5:
+                tutRef_5.SetActive(true);
+                break;
+            case 10:
+                tutRef_10.SetActive(true);
+                break;
+            case 14:
+                tutRef_14.SetActive(false);
+                break;
         }
     }
+
+    #endregion
+
+    #region Gameplay Methods
+    //////////////////////////////////////////////////////////
+    ///
+    ///         GAMEPLAY METHODS
+    ///
+    //////////////////////////////////////////////////////////
+
+    public void SetGameOver()
+    {
+        if (state == GameState.GameOver)
+            return;
+
+        AudioManager.instance.StopSound(SFXType.Grow);
+        state = GameState.GameOver;
+        gameOverText.SetActive(true);
+        if (playTesting)
+            EditorManager.instance.designButton.SetActive(false);
+        StartCoroutine(GameOver());
+    }
+
+    IEnumerator GameOver()
+    {
+        yield return new WaitForSeconds(5);
+        gameOverText.SetActive(false);
+        ResetMap();
+        state = GameState.Playing;
+        if (playTesting)
+            EditorManager.instance.designButton.SetActive(true);
+    }
+
+    public void SetLevelWon()
+    {
+        if (state == GameState.WonGame)
+            return;
+
+        AudioManager.instance.StopSound(SFXType.Grow);
+        AudioManager.instance.PlaySound(SFXType.Win);
+        state = GameState.WonGame;
+        gameWonText.SetActive(true);
+        if (playTesting)
+            EditorManager.instance.designButton.SetActive(false);
+        StartCoroutine(LevelWon());
+    }
+
+    IEnumerator LevelWon()
+    {
+        yield return new WaitForSeconds(5);
+        gameWonText.SetActive(false);
+        AdvanceLevel();
+        ResetMap();
+        state = GameState.Playing;
+        if (playTesting)
+            EditorManager.instance.designButton.SetActive(true);
+    }
+
+    public bool CheckIfWon()
+    {
+        return (totalRootsAtDestination > 0);
+    }
+
+    public bool CheckIfGameOver()
+    {
+        return (totalRootsStuck == totalRoots);
+    }
+    #endregion
+
+    #region Unity Events
+    //////////////////////////////////////////////////////////
+    ///
+    ///         UNITY EVENT METHODS
+    ///
+    //////////////////////////////////////////////////////////
+
+    private void Awake()
+    {
+        instance = this;
+    }
+
+    void Start()
+    {
+        AudioManager.instance.PlayMusic(MusicType.Gameplay);
+
+        GameTileLookup = new Dictionary<TileType, GameTile>();
+        TileTypeLookup = new Dictionary<TileType, Tile>();
+        stageBounds = new BoundsInt(0, 0, 0, MapMaxWidth, MapMaxHeight, 1);
+        undoTiles = new TileBase[MapMaxWidth * MapMaxHeight];
+
+        foreach (GameTileConfig tilecfg in TileList)
+        {
+            TileTypeLookup[tilecfg.Type] = tilecfg.TileObject;
+            GameTileLookup[tilecfg.Type] = new GameTile(tilecfg.Type) { config = tilecfg };
+        }
+
+        rootRedirectTileLookup = new Dictionary<TileRedirectDirection, Tile>();
+        foreach (RootRedirectTile tile in rootRedirectTiles)
+        {
+            rootRedirectTileLookup[tile.redirectDirection] = tile.rootPieceTile;
+        }
+
+        rootReDirLookup = new Dictionary<GrowthDirection, TileRedirectDirection>();
+        foreach (RootDirRedir dr in rootDirRedirs)
+        {
+            rootReDirLookup[dr.direction] = dr.redirectDirection;
+        }
+
+        stageBounds = new BoundsInt(0, 0, 0, MapMaxWidth, MapMaxHeight, 1);
+        InitializeMap();
+        if (currentLevel == 0) currentLevel = 1;
+        LoadLevel(currentLevel);
+        PlaceRoots();
+        ShowTutorialImage(currentLevel);
+        LevelDisplay.instance.Show(currentLevel);
+        state = GameState.Playing;
+        usedUndo = false;
+        //EditorManager.instance.StartEditing();
+    }
+
+    void Update()
+    {
+        rootsGrowing = RootsGrowing();
+        if (state == GameState.Playing)
+        {
+            if (!rootsGrowing)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape))
+                    ShowPause();
+                else if (undoAvailable && (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Z)))
+                {
+                    UndoPress();
+                }
+                else if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W))
+                {
+                    MakeRootsGrow(GrowthDirection.North);
+                }
+                else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
+                {
+                    MakeRootsGrow(GrowthDirection.East);
+                }
+                else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
+                {
+                    MakeRootsGrow(GrowthDirection.South);
+                }
+                else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
+                {
+                    MakeRootsGrow(GrowthDirection.West);
+                }
+
+                rootsGrowing = RootsGrowing();
+
+                if (rootsGrowing)
+                {
+                    AudioManager.instance.PlaySound(SFXType.Grow);
+                }
+            }
+            else
+            {
+                AudioManager.instance.StopSound(SFXType.Grow);
+            }
+        }
+        else if (state == GameState.Paused && Input.GetKeyDown(KeyCode.Escape))
+            HidePause();
+    }
+    #endregion
 }

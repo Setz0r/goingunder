@@ -31,6 +31,9 @@ public class Root : MonoBehaviour
 
     public float startGrowTime;
 
+    public Vector3Int lastTipPosition;
+    public GrowthDirection lastTipDirection;
+
     public Vector3Int stageStartPosition;
     public Vector3Int stageTipPosition;
 
@@ -44,7 +47,6 @@ public class Root : MonoBehaviour
 
     private bool growing;
     private bool blocked;
-    private bool reachedDestination;
 
     public Tuple<int, int> GetDestination(GrowthDirection direction)
     {
@@ -196,13 +198,19 @@ public class Root : MonoBehaviour
         return GameplayManager.instance.activeMap.mapTiles[position.x, position.y].tileType;
     }
 
+    public bool CanRootGrow(GrowthDirection direction)
+    {
+        if (!DirectionBlocked(direction))
+            return true;
+        return false;
+    }
+
     public IEnumerator Grow()
     {
         if (!DirectionBlocked(currentDirection))
         {
             blocked = true;
             yield return new WaitForSeconds(currentDelay);
-            growing = true;
             growthDirection = currentDirection;
             Tuple<int, int> destination = GetDestination(currentDirection);
             int curX = stageTipPosition.x;
@@ -215,7 +223,6 @@ public class Root : MonoBehaviour
             GrowthDirection enterDir = prevTile.rootEnterDirection;
             GrowthDirection exitDir = prevTile.rootExitDirection;
             Tile setTile = null;
-
             if ((enterDir == GrowthDirection.West && exitDir == GrowthDirection.South) ||
                 (enterDir == GrowthDirection.South && exitDir == GrowthDirection.West))
             {
@@ -269,7 +276,7 @@ public class Root : MonoBehaviour
             stageTipPosition = new Vector3Int(destX, destY, 0);
 
             GameplayManager.instance.rootLayer.SetTile(stageTipPosition, GetTileByDirection(currentDirection));
-
+            
             if (IsDeathTile(stageTipPosition))
             {
                 GameplayManager.instance.SetGameOver();
@@ -290,16 +297,18 @@ public class Root : MonoBehaviour
 
                     AudioManager.instance.PlaySound(SFXType.GameOver);
 
-                    growing = false;
                 }
-            }    
+                growing = false;
+                blocked = true;
+                AudioManager.instance.PlaySound(SFXType.Wall);
+            }
             else if (IsDestinationTile(stageTipPosition) && DirectionBlocked(growthDirection))
             {
                 GameplayManager.instance.totalRootsAtDestination++;
                 AudioManager.instance.PlaySound(SFXType.Water);
 
                 if (GameplayManager.instance.CheckIfWon())
-                    GameplayManager.instance.SetGameWon();
+                    GameplayManager.instance.SetLevelWon();
 
                 growing = false;
             }
@@ -311,6 +320,13 @@ public class Root : MonoBehaviour
             growing = false;
             AudioManager.instance.PlaySound(SFXType.Wall);
         }
+    }
+
+    public void ResetPosition()
+    {
+        currentDirection = lastTipDirection;
+        growthDirection = currentDirection;
+        stageTipPosition = lastTipPosition;
     }
 
     private void Start()
@@ -325,44 +341,27 @@ public class Root : MonoBehaviour
         GameplayManager.instance.rootLayer.SetTile(stageStartPosition, GameplayManager.instance.rootRedirectTileLookup[GameplayManager.instance.rootReDirLookup[currentDirection]]);
     }
 
-    private void OnDestroy()
+    public void TryGrow(GrowthDirection direction)
     {
-
+        lastTipDirection = currentDirection;
+        lastTipPosition = stageTipPosition;
+        currentDirection = direction;
+        if (!DirectionBlocked(direction))
+        {
+            growing = true;
+            StartCoroutine(Grow());
+        }
     }
 
     void Update()
     {
-        if (GameplayManager.instance.state != GameState.Playing || reachedDestination)
+        if (GameplayManager.instance.state != GameState.Playing)
             return;
 
         currentDelay = growSpeed;
 
         if (!blocked)
         {
-            if (!growing)
-            {
-                if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W))
-                {
-                    currentDirection = GrowthDirection.North;
-                    StartCoroutine(Grow());
-                }
-                else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
-                {
-                    currentDirection = GrowthDirection.East;
-                    StartCoroutine(Grow());
-                }
-                else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
-                {
-                    currentDirection = GrowthDirection.South;
-                    StartCoroutine(Grow());
-                }
-                else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
-                {
-                    currentDirection = GrowthDirection.West;
-                    StartCoroutine(Grow());
-                }
-            }
-
             if (growing)
             {
                 if (IsRedirectTile(stageTipPosition))

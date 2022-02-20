@@ -9,7 +9,9 @@ public enum MusicType : int
 {
     None,
     MainMenu,
-    Gameplay
+    Gameplay,
+    GameplayAlt,
+    Credits
 }
 
 [Serializable]
@@ -39,6 +41,8 @@ public class AudioManager : MonoBehaviour
     public AudioSource backgroundMusic;
     public AudioClip menuMusic;
     public AudioClip gameMusic;
+    public AudioClip gameMusicAlt;
+    public AudioClip winMusic;
 
     // SFX
     public bool sfxMuted;
@@ -61,6 +65,10 @@ public class AudioManager : MonoBehaviour
             backgroundMusic.clip = menuMusic;
         else if (type == MusicType.Gameplay)
             backgroundMusic.clip = gameMusic;
+        else if (type == MusicType.GameplayAlt)
+            backgroundMusic.clip = gameMusicAlt;
+        else if (type==MusicType.Credits)
+            backgroundMusic.clip = winMusic;
         backgroundMusic.Play();
     }
 
@@ -78,8 +86,10 @@ public class AudioManager : MonoBehaviour
                     growSound.Play();
                 break;
             case SFXType.Win:
-                if (!winSound.isPlaying)
+                {
+                    StopSound(SFXType.Win);
                     winSound.Play();
+                }
                 break;
             case SFXType.GameOver:
                 if (!gameOverSound.isPlaying)

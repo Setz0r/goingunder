@@ -56,6 +56,6 @@ public class MainMenuManager : MonoBehaviour
         if (AudioManager.instance.backgroundMusic.isPlaying)
             return;
 
-        AudioManager.instance.PlayMusic(MusicType.Gameplay);
+        AudioManager.instance.PlayMusic(MusicType.MainMenu);
     }
 }

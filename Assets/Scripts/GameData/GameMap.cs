@@ -12,7 +12,7 @@ public class GameMap
     public int sizeY;
     public bool DebugMode;
 
-    public HistoryStack<GameTile[,]> previousMapTiles;
+    public GameTile[,] previousMapTiles;
     public GameTile[,] mapTiles;
 
     public bool IsDirty;
@@ -49,11 +49,39 @@ public class GameMap
         { TileType.RootLeft, 'A' }
     };
 
+    public void BackupTiles()
+    {
+        for (int x = 0; x < sizeX; x++)
+        {
+            for (int y = 0; y < sizeY; y++)
+            {
+                previousMapTiles[x, y] = new GameTile(mapTiles[x, y]);
+            }
+        }
+
+        //previousMapTiles = (GameTile[,])mapTiles.Clone();
+        //mapTiles.CopyTo(previousMapTiles, 0);
+    }
+
+    public void RestoreTiles()
+    {
+        for (int x = 0; x < sizeX; x++)
+        {
+            for (int y = 0; y < sizeY; y++)
+            {
+                mapTiles[x, y] = new GameTile(previousMapTiles[x, y]);
+            }
+        }
+        //mapTiles = (GameTile[,])previousMapTiles.Clone();
+        //previousMapTiles.CopyTo(mapTiles, 0);
+    }
+
     public GameMap(int _sizeX, int _sizeY)
     {
         sizeX = _sizeX;
         sizeY = _sizeY;
         mapTiles = new GameTile[sizeX, sizeY];
+        previousMapTiles = new GameTile[sizeX, sizeY];
     }
 
     public void UpdateMapTile(int x, int y, TileType type)
@@ -146,6 +174,8 @@ public class GameMap
             for (int y = 0; y < sizeY; y++)
             {
                 TileType type = mapTiles[x, y].tileType;
+                if (mapTiles[x, y].IsRootTile)
+                    continue;
                 Tile tile;
                 if (type == TileType.Dirt)
                 {
@@ -170,7 +200,6 @@ public class GameMap
             }
         }
     }
-
 
     public void LoadMapFile(string fileName)
     {

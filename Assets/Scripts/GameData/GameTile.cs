@@ -54,6 +54,8 @@ public class GameTile
 
     public GameTile(GameTile source)
     {
+        rootEnterDirection = source.rootEnterDirection;
+        rootExitDirection = source.rootExitDirection;
         config = source.config;
         tileType = source.tileType;
         blocked = source.blocked;
