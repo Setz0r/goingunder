@@ -11,16 +11,19 @@ public class MainMenuManager : MonoBehaviour
 
     public void ToggleMusic()
     {
+        AudioManager.instance.PlaySound(SFXType.Click);
         AudioManager.instance.ToggleMusic(!musicToggle.GetComponent<Toggle>().isOn);
     }
 
     public void ToggleSFX()
     {
+        AudioManager.instance.PlaySound(SFXType.Click);
         AudioManager.instance.ToggleSFX(!sfxToggle.GetComponent<Toggle>().isOn);
     }
 
     public void StartGame()
     {
+        AudioManager.instance.PlaySound(SFXType.Click);
         Fader.instance.FadeOut();
     }
 
@@ -40,6 +43,7 @@ public class MainMenuManager : MonoBehaviour
 
     public void QuitGame()
     {
+        AudioManager.instance.PlaySound(SFXType.Click);
         Quit();
     }
 
@@ -53,9 +57,7 @@ public class MainMenuManager : MonoBehaviour
         sfxToggle.GetComponent<Toggle>().SetIsOnWithoutNotify(!AudioManager.instance.sfxMuted);
         musicToggle.GetComponent<Toggle>().SetIsOnWithoutNotify(!AudioManager.instance.musicMuted);
 
-        if (AudioManager.instance.backgroundMusic.isPlaying)
-            return;
-
         AudioManager.instance.PlayMusic(MusicType.MainMenu);
+        AudioManager.instance.FadeInMusic(1);
     }
 }

@@ -26,7 +26,7 @@ public class Root : MonoBehaviour
     public GameObject root;
 
     public float growSpeed = 0.02f;
-    public float redirectDelay = 0.05f;
+    public float redirectDelay = 0.06f;
     public float currentDelay = 0;
 
     public float startGrowTime;

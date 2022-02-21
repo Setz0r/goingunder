@@ -16,7 +16,8 @@ public enum GameState : int
     Paused,
     GameOver,
     WonGame,
-    Leaving
+    Leaving,
+    Cutscene
 }
 
 [Serializable]
@@ -43,6 +44,7 @@ public class GameplayManager : MonoBehaviour
     public GameObject undoButton;
     public GameObject gameOverText;
     public GameObject gameWonText;
+    public GameObject csManager;
     #endregion
 
     #region Tutorial Image Refs
@@ -122,6 +124,7 @@ public class GameplayManager : MonoBehaviour
     public int currentLevel = 1;
     public int maxLevel = 16;
     public int movesCounter;
+    public bool inputDisabled;
     public bool playTesting = false;
     #endregion
 
@@ -158,8 +161,20 @@ public class GameplayManager : MonoBehaviour
 
     public void UndoPress()
     {
+        AudioManager.instance.PlaySound(SFXType.Click);
+        inputDisabled = true;
         if (undoAvailable && !rootsGrowing)
-            PerformUndo();
+            StartCoroutine(FadeOutUndo());
+    }
+
+    public IEnumerator FadeOutUndo()
+    {
+        Fader.instance.animator.Play("FlashFadeOut");
+        AudioManager.instance.PlaySound(SFXType.Undo);
+        yield return new WaitForSeconds(0.8f);
+        PerformUndo();
+        Fader.instance.animator.Play("FlashFadeIn");
+        inputDisabled = false;
     }
     #endregion
 
@@ -320,6 +335,7 @@ public class GameplayManager : MonoBehaviour
         }
         if (CanAnyRootsGrow)
         {
+            AudioManager.instance.PlaySound(SFXType.Grow);
             if (!usedUndo)
             {
                 BackupLastRootHistory();
@@ -354,19 +370,59 @@ public class GameplayManager : MonoBehaviour
         activeMap.LoadMapFile(levelNum.ToString());
     }
 
+    public void ProceedLevel()
+    {
+        DoLevelStart();
+        //SaveManager.instance.SaveData(currentLevel, currentLevel);
+        //LoadLevel(currentLevel);
+        //ShowTutorialImage(currentLevel);
+        //LevelDisplay.instance.Show(currentLevel);
+    }
+
     public void AdvanceLevel()
     {
         currentLevel++;
-        if (currentLevel > maxLevel)
+        if (currentLevel <= maxLevel)
         {
+            if (currentLevel == 4)
+            {
+                ShowCutscene(1, ProceedLevel);
+            }
+            else if (currentLevel == 9)
+            {
+                ShowCutscene(2, ProceedLevel);
+            }
+            else if (currentLevel == 13)
+            {
+                ShowCutscene(3, ProceedLevel);
+            }
+            else
+                ProceedLevel();
+        }
+    }
+
+    public IEnumerator FadeAdvanceLevel()
+    {
+        inputDisabled = true;
+        HideUndo();
+        Fader.instance.animator.Play("FlashFadeOut");        
+        yield return new WaitForSeconds(0.8f);
+        if (currentLevel == maxLevel)
+        {
+            Fader.instance.FadeOut();
+            SaveManager.instance.SaveData(maxLevel, maxLevel);
             GoToCredits();
         }
         else
         {
-            LoadLevel(currentLevel);
-            ShowTutorialImage(currentLevel);
-            LevelDisplay.instance.Show(currentLevel);
+            AdvanceLevel();
         }
+        ResetMap();
+        state = GameState.Playing;
+        if (playTesting)
+            EditorManager.instance.designButton.SetActive(true);
+        Fader.instance.animator.Play("FlashFadeIn");
+        inputDisabled = false;
     }
 
     public void ResetMap()
@@ -416,6 +472,7 @@ public class GameplayManager : MonoBehaviour
 
     public void ShowPause()
     {
+        inputDisabled = true;
         pauseView.SetActive(true);
         state = GameState.Paused;
     }
@@ -424,6 +481,7 @@ public class GameplayManager : MonoBehaviour
     {
         pauseView.SetActive(false);
         state = GameState.Playing;
+        inputDisabled = false;
     }
 
     public void ResumeButtonPress()
@@ -440,7 +498,9 @@ public class GameplayManager : MonoBehaviour
 
     public void QuitToMenuPress()
     {
+        AudioManager.instance.FadeOutMusic(1);
         state = GameState.Leaving;
+        inputDisabled = true;
         Fader.instance.FadeOut();
         HidePause();
     }
@@ -510,10 +570,12 @@ public class GameplayManager : MonoBehaviour
     {
         if (state == GameState.GameOver)
             return;
-
+        inputDisabled = true;
+        AudioManager.instance.FadeOutMusic(1);
         AudioManager.instance.StopSound(SFXType.Grow);
         state = GameState.GameOver;
         gameOverText.SetActive(true);
+        gameOverText.GetComponent<Animator>().SetBool("LoseShow", true);
         if (playTesting)
             EditorManager.instance.designButton.SetActive(false);
         StartCoroutine(GameOver());
@@ -522,22 +584,42 @@ public class GameplayManager : MonoBehaviour
     IEnumerator GameOver()
     {
         yield return new WaitForSeconds(5);
+        gameOverText.GetComponent<Animator>().SetBool("LoseShow", false);
+        StartCoroutine(HideLose());
+        StartCoroutine(FadeGameOver());
+    }
+
+    IEnumerator HideLose()
+    {
+        yield return new WaitForSeconds(1);
         gameOverText.SetActive(false);
+    }
+
+    IEnumerator FadeGameOver()
+    {
+        Fader.instance.animator.Play("FlashFadeOut");
+        AudioManager.instance.PlaySound(SFXType.Undo);
+        yield return new WaitForSeconds(0.8f);
         ResetMap();
+        AudioManager.instance.FadeInMusic(1);
         state = GameState.Playing;
         if (playTesting)
             EditorManager.instance.designButton.SetActive(true);
+        Fader.instance.animator.Play("FlashFadeIn");
+        inputDisabled = false;
     }
 
     public void SetLevelWon()
     {
         if (state == GameState.WonGame)
             return;
-
+        inputDisabled = true;
+        AudioManager.instance.FadeOutMusic(1);
         AudioManager.instance.StopSound(SFXType.Grow);
         AudioManager.instance.PlaySound(SFXType.Win);
         state = GameState.WonGame;
         gameWonText.SetActive(true);
+        gameWonText.GetComponent<Animator>().SetBool("WinShow", true);
         if (playTesting)
             EditorManager.instance.designButton.SetActive(false);
         StartCoroutine(LevelWon());
@@ -546,12 +628,16 @@ public class GameplayManager : MonoBehaviour
     IEnumerator LevelWon()
     {
         yield return new WaitForSeconds(5);
+        gameWonText.GetComponent<Animator>().SetBool("WinShow", false);
+        StartCoroutine(HideWon());        
+        inputDisabled = true;
+        StartCoroutine(FadeAdvanceLevel());
+    }
+
+    IEnumerator HideWon()
+    {
+        yield return new WaitForSeconds(1);
         gameWonText.SetActive(false);
-        AdvanceLevel();
-        ResetMap();
-        state = GameState.Playing;
-        if (playTesting)
-            EditorManager.instance.designButton.SetActive(true);
     }
 
     public bool CheckIfWon()
@@ -565,6 +651,40 @@ public class GameplayManager : MonoBehaviour
     }
     #endregion
 
+    #region Cutscene Methods
+    //////////////////////////////////////////////////////////
+    ///
+    ///         CUTSCENE METHODS
+    ///
+    //////////////////////////////////////////////////////////
+    
+    public void ShowCutscene(int level, Action andThen)
+    {
+        inputDisabled = true;
+        csManager.SetActive(true);
+        AudioManager.instance.FadeOutMusic(1);
+        CutSceneManager.instance.ShowCutscene(level);
+        StartCoroutine(CutsceneTimer(andThen));
+    }
+
+    public IEnumerator CutsceneTimer(Action andThen)
+    {
+        yield return new WaitForSeconds(4f);
+        inputDisabled = false;
+        AudioManager.instance.FadeInMusic(1);
+        if (andThen != null)
+            andThen();
+        StartCoroutine(DisableCutsceneManager());
+    }
+
+    public IEnumerator DisableCutsceneManager()
+    {
+        yield return new WaitForSeconds(2);
+        csManager.SetActive(false);
+    }
+
+    #endregion
+
     #region Unity Events
     //////////////////////////////////////////////////////////
     ///
@@ -575,6 +695,19 @@ public class GameplayManager : MonoBehaviour
     private void Awake()
     {
         instance = this;
+    }
+
+    public void DoLevelStart()
+    {
+        LoadLevel(currentLevel);
+        PlaceRoots();
+        ShowTutorialImage(currentLevel);
+        LevelDisplay.instance.Show(currentLevel);
+        state = GameState.Playing;
+        usedUndo = false;
+        MusicType mtype = (currentLevel % 2 == 0) ? MusicType.GameplayAlt : MusicType.Gameplay;
+        AudioManager.instance.PlayMusic(mtype);
+        AudioManager.instance.FadeInMusic(1);
     }
 
     void Start()
@@ -606,13 +739,16 @@ public class GameplayManager : MonoBehaviour
 
         stageBounds = new BoundsInt(0, 0, 0, MapMaxWidth, MapMaxHeight, 1);
         InitializeMap();
+        
+        currentLevel = SaveManager.instance.SelectedLevel;
         if (currentLevel == 0) currentLevel = 1;
-        LoadLevel(currentLevel);
-        PlaceRoots();
-        ShowTutorialImage(currentLevel);
-        LevelDisplay.instance.Show(currentLevel);
-        state = GameState.Playing;
-        usedUndo = false;
+        if (currentLevel == 1)
+        {
+            ShowCutscene(0, DoLevelStart);
+        } else
+        {
+            DoLevelStart();
+        }
         //EditorManager.instance.StartEditing();
     }
 
@@ -623,39 +759,34 @@ public class GameplayManager : MonoBehaviour
         {
             if (!rootsGrowing)
             {
-                if (Input.GetKeyDown(KeyCode.Escape))
-                    ShowPause();
-                else if (undoAvailable && (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Z)))
-                {
-                    UndoPress();
-                }
-                else if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W))
-                {
-                    MakeRootsGrow(GrowthDirection.North);
-                }
-                else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
-                {
-                    MakeRootsGrow(GrowthDirection.East);
-                }
-                else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
-                {
-                    MakeRootsGrow(GrowthDirection.South);
-                }
-                else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
-                {
-                    MakeRootsGrow(GrowthDirection.West);
-                }
+                if (AudioManager.instance.growSound.isPlaying)
+                    AudioManager.instance.StopSound(SFXType.Grow);
 
-                rootsGrowing = RootsGrowing();
-
-                if (rootsGrowing)
+                if (!inputDisabled)
                 {
-                    AudioManager.instance.PlaySound(SFXType.Grow);
+                    if (Input.GetKeyDown(KeyCode.Escape))
+                        ShowPause();
+                    else if (undoAvailable && (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Z)))
+                    {
+                        UndoPress();
+                    }
+                    else if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W))
+                    {
+                        MakeRootsGrow(GrowthDirection.North);
+                    }
+                    else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
+                    {
+                        MakeRootsGrow(GrowthDirection.East);
+                    }
+                    else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
+                    {
+                        MakeRootsGrow(GrowthDirection.South);
+                    }
+                    else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
+                    {
+                        MakeRootsGrow(GrowthDirection.West);
+                    }
                 }
-            }
-            else
-            {
-                AudioManager.instance.StopSound(SFXType.Grow);
             }
         }
         else if (state == GameState.Paused && Input.GetKeyDown(KeyCode.Escape))

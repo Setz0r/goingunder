@@ -180,7 +180,9 @@ public class GameMap
                 if (type == TileType.Dirt)
                 {
                     int totalAlts = GameplayManager.instance.alternateDirtTiles.Length;
-                    int dirtTileIndex = UnityEngine.Random.Range(0, totalAlts);
+                    int dirtTileIndex = UnityEngine.Random.Range(0, totalAlts-4);
+                    if (UnityEngine.Random.Range(0,100) < 20 && x > 0 && x < sizeX-1 && y > 0 && y < sizeY-1 && (x < 5 || x > 28) && (y < 5 || y > 13))
+                        dirtTileIndex += 4;
                     tile = GameplayManager.instance.alternateDirtTiles[dirtTileIndex];
                 }
                 else

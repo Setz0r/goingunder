@@ -45,9 +45,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   root: {fileID: 8202834542619737231}
   growSpeed: 0.1
-  redirectDelay: 0.5
+  redirectDelay: 0.7
   currentDelay: 0
   startGrowTime: 0
+  lastTipPosition: {x: 0, y: 0, z: 0}
+  lastTipDirection: 0
   stageStartPosition: {x: 0, y: 0, z: 0}
   stageTipPosition: {x: 0, y: 0, z: 0}
   baseDirection: 0
