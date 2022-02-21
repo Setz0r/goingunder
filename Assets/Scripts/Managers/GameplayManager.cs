@@ -45,6 +45,7 @@ public class GameplayManager : MonoBehaviour
     public GameObject gameOverText;
     public GameObject gameWonText;
     public GameObject csManager;
+    public GameObject quitToDesktopBtn;
     #endregion
 
     #region Tutorial Image Refs
@@ -785,7 +786,8 @@ public class GameplayManager : MonoBehaviour
                     else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
                     {
                         MakeRootsGrow(GrowthDirection.West);
-                    }
+                    } else if (Input.GetKeyDown(KeyCode.R))
+                        RetryButtonPress();
                 }
             }
         }

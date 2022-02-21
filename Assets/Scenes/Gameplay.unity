@@ -4083,6 +4083,7 @@ MonoBehaviour:
   gameOverText: {fileID: 549776691}
   gameWonText: {fileID: 20538874}
   csManager: {fileID: 8560190899433855325}
+  quitToDesktopBtn: {fileID: 1291394188}
   tutRef_1: {fileID: 419275388}
   tutRef_3: {fileID: 806045471}
   tutRef_4: {fileID: 411686765}
@@ -5422,7 +5423,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1291394189
 RectTransform:
   m_ObjectHideFlags: 0
